@@ -91,7 +91,6 @@ class _ProfilesPageState extends State<ProfilesPage> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _profileNameController,
-                  cursorColor: Colors.green,
                   inputFormatters: [
                     LengthLimitingTextInputFormatter(45),
                   ],
@@ -99,9 +98,20 @@ class _ProfilesPageState extends State<ProfilesPage> {
                     if (value == null || value.isEmpty) {
                       return 'profileNameCannotBeEmpty'.tr;
                     }
+                    if (!value.contains(RegExp(r'^[\w\d _-]+$'))) {
+                      return 'profileNameCannotContainSpecialChars'.tr;
+                    }
 
-                    if (value.toLowerCase() == 'default') {
+                    if (value.toLowerCase().trim() == 'default' ||
+                        value.toLowerCase().trim() ==
+                            'default'.tr.toLowerCase()) {
                       return 'reservedProfileName'.tr;
+                    }
+
+                    if (profiles.any((profile) =>
+                        profile.label.toLowerCase() ==
+                        value.toLowerCase().trim())) {
+                      return 'profileNameAlreadyExists'.tr;
                     }
 
                     return null;
@@ -112,13 +122,13 @@ class _ProfilesPageState extends State<ProfilesPage> {
                       color: AppColors.mainColor,
                     ),
                     border: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.green),
+                      borderSide: BorderSide(color: AppColors.green),
                     ),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: mainColor),
                     ),
                     focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.green),
+                      borderSide: BorderSide(color: AppColors.green),
                     ),
                     focusedErrorBorder: const UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.mainColor),
@@ -140,7 +150,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
                   if (isTextValid) {
                     // Create the profile directory for the new profile
                     await StorageUtils.createSpecificProfileFolder(
-                      _profileNameController.text,
+                      _profileNameController.text.trim(),
                     );
 
                     Utils.logInfo(
@@ -151,7 +161,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
                     setState(() {
                       profiles.insert(
                         profiles.length,
-                        Profile(label: _profileNameController.text),
+                        Profile(label: _profileNameController.text.trim()),
                       );
                       _profileNameController.clear();
                     });
@@ -303,7 +313,11 @@ class _ProfilesPageState extends State<ProfilesPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        title: Text(profiles[index].label),
+                        title: Text(
+                          profiles[index].isDefault
+                              ? 'default'.tr
+                              : profiles[index].label,
+                        ),
                         secondary: profiles[index].isDefault
                             ? null
                             : IconButton(

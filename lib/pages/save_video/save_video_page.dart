@@ -40,11 +40,11 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
 
   final double textOutlineStrokeWidth = 1;
 
-  late String _dateFormatValue;
+  late String _dateFinalFormatValueForVideoEdit;
 
-  late String _dateWrittenValue;
+  late String _dateWrittenValueForVideoEdit;
 
-  List<String> _dateFormats = [
+  List<String> _dateFormatsForVideoEdit = [
     DateFormatUtils.getToday(
       allowCheckFormattingDayFirst: true,
     ),
@@ -63,25 +63,25 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
   bool _isLocationProcessing = false;
 
   void _initCorrectDates() {
-    final DateTime _determinedDate = routeArguments['currentDate'];
+    final DateTime selectedDate = routeArguments['currentDate'];
 
-    final String _dateCommonValue = DateFormatUtils.getDate(
-      _determinedDate,
+    final String dateCommonValue = DateFormatUtils.getDate(
+      selectedDate,
       allowCheckFormattingDayFirst: true,
     );
 
-    _dateWrittenValue = DateFormatUtils.getWrittenToday(
-      customDate: _determinedDate,
+    _dateWrittenValueForVideoEdit = DateFormatUtils.getWrittenToday(
+      customDate: selectedDate,
       lang: Get.locale!.languageCode,
     );
 
-    _recordingSettingsController.dateFormat.value == 0
-        ? _dateFormatValue = _dateCommonValue
-        : _dateFormatValue = _dateWrittenValue;
+    _recordingSettingsController.dateFormatId.value == 0
+        ? _dateFinalFormatValueForVideoEdit = dateCommonValue
+        : _dateFinalFormatValueForVideoEdit = _dateWrittenValueForVideoEdit;
 
-    _dateFormats = [
-      _dateCommonValue,
-      _dateWrittenValue,
+    _dateFormatsForVideoEdit = [
+      dateCommonValue,
+      _dateWrittenValueForVideoEdit,
     ];
   }
 
@@ -266,7 +266,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
         parseColorString(_recordingSettingsController.dateColor.value);
     currentColor = pickerColor;
     _tempVideoPath = routeArguments['videoPath'];
-    isTextDate = _recordingSettingsController.dateFormat.value == 1;
+    isTextDate = _recordingSettingsController.dateFormatId.value == 1;
     _initCorrectDates();
     _initVideoPlayerController();
     super.initState();
@@ -284,7 +284,6 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
       videoFile: File(routeArguments['videoPath']),
     )
         .then((_) {
-      _trimmer.videoPlayerController?.setLooping(true);
       // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
       setState(() {});
     });
@@ -316,77 +315,50 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
   }
 
   Widget _dailyVideoPlayer() {
-    return GestureDetector(
-      onTap: () => videoPlay(),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Stack(
-          children: [
-            VideoViewer(
-              trimmer: _trimmer,
-            ),
-            Center(
-              child: Opacity(
-                opacity: _isVideoPlaying ? 0.0 : 1.0,
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.25,
-                  height: MediaQuery.of(context).size.width * 0.25,
-                  decoration: const BoxDecoration(
-                    color: Colors.black45,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.play_arrow,
-                      size: 72.0,
-                      color: Colors.white,
+    return ColoredBox(
+      color: AppColors.dark,
+      child: GestureDetector(
+        onTap: () => videoPlay(),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Stack(
+            children: [
+              VideoViewer(
+                trimmer: _trimmer,
+              ),
+              Center(
+                child: Opacity(
+                  opacity: _isVideoPlaying ? 0.0 : 1.0,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.25,
+                    height: MediaQuery.of(context).size.width * 0.25,
+                    decoration: const BoxDecoration(
+                      color: Colors.black45,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.play_arrow,
+                        size: 72.0,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Align(
-              alignment: isTextDate ? Alignment.bottomLeft : Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Stack(
-                  children: [
-                    Text(
-                      isTextDate ? _dateWrittenValue : _dateFormatValue,
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.width * 0.03,
-                        foreground: Paint()
-                          ..style = PaintingStyle.stroke
-                          ..strokeWidth = textOutlineStrokeWidth
-                          ..color = invert(currentColor),
-                      ),
-                    ),
-                    Text(
-                      isTextDate ? _dateWrittenValue : _dateFormatValue,
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.width * 0.03,
-                        color: currentColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Visibility(
-              visible: isGeotaggingEnabled,
-              child: Align(
-                alignment: Alignment.bottomRight,
+              Align(
+                alignment:
+                    isTextDate ? Alignment.bottomLeft : Alignment.topRight,
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Stack(
                     children: [
                       Text(
-                        customLocationTextController.text.isEmpty
-                            ? _currentAddress ??
-                                customLocationTextController.text
-                            : customLocationTextController.text,
+                        isTextDate
+                            ? _dateFormatsForVideoEdit.last
+                            : _dateFormatsForVideoEdit.first,
                         style: TextStyle(
-                          fontSize: MediaQuery.of(context).size.width * 0.032,
+                          fontSize: MediaQuery.of(context).size.width * 0.03,
                           foreground: Paint()
                             ..style = PaintingStyle.stroke
                             ..strokeWidth = textOutlineStrokeWidth
@@ -394,12 +366,11 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                         ),
                       ),
                       Text(
-                        customLocationTextController.text.isEmpty
-                            ? _currentAddress ??
-                                customLocationTextController.text
-                            : customLocationTextController.text,
+                        isTextDate
+                            ? _dateFormatsForVideoEdit.last
+                            : _dateFormatsForVideoEdit.first,
                         style: TextStyle(
-                          fontSize: MediaQuery.of(context).size.width * 0.032,
+                          fontSize: MediaQuery.of(context).size.width * 0.03,
                           color: currentColor,
                         ),
                       ),
@@ -407,8 +378,44 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                   ),
                 ),
               ),
-            ),
-          ],
+              Visibility(
+                visible: isGeotaggingEnabled,
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Stack(
+                      children: [
+                        Text(
+                          customLocationTextController.text.isEmpty
+                              ? _currentAddress ??
+                                  customLocationTextController.text
+                              : customLocationTextController.text,
+                          style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.width * 0.032,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = textOutlineStrokeWidth
+                              ..color = invert(currentColor),
+                          ),
+                        ),
+                        Text(
+                          customLocationTextController.text.isEmpty
+                              ? _currentAddress ??
+                                  customLocationTextController.text
+                              : customLocationTextController.text,
+                          style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.width * 0.032,
+                            color: currentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -433,7 +440,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
               title: 'discardVideoTitle'.tr,
               content: 'discardVideoDesc'.tr,
               actionText: 'yes'.tr,
-              actionColor: Colors.green,
+              actionColor: AppColors.green,
               action: () => closePopupAndPushToRecording(_tempVideoPath),
               action2Text: 'no'.tr,
               action2Color: Colors.red,
@@ -460,7 +467,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
             videoPath: _tempVideoPath,
             videoController: _trimmer.videoPlayerController!,
             dateColor: currentColor,
-            dateFormat: _dateFormatValue,
+            dateFormat: _dateFinalFormatValueForVideoEdit,
             isTextDate: isTextDate,
             userLocation: customLocationTextController.text.isEmpty
                 ? _currentAddress ?? ''
@@ -474,51 +481,49 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
             textOutlineColor: invert(currentColor),
             textOutlineWidth: textOutlineStrokeWidth,
             determinedDate: routeArguments['currentDate'],
+            isFromRecordingPage: routeArguments['isFromRecordingPage'],
           ),
         ),
-        body: SingleChildScrollView(
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height,
-            child: Column(
-              children: [
-                _dailyVideoPlayer(),
-                const SizedBox(height: 8),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                    child: TrimViewer(
-                      trimmer: _trimmer,
-                      viewerHeight: 50.0,
-                      type: ViewerType.fixed,
-                      editorProperties: TrimEditorProperties(
-                        borderWidth: 4.0,
-                        circleSize: 6.0,
-                        circleSizeOnDrag: 9.0,
-                        sideTapSize: 21,
-                        circlePaintColor: ThemeService().isDarkTheme()
-                            ? Colors.white
-                            : Colors.black,
-                        borderPaintColor: ThemeService().isDarkTheme()
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                      durationStyle: DurationStyle.FORMAT_MM_SS,
-                      durationTextStyle: ThemeService().isDarkTheme()
-                          ? const TextStyle(color: Colors.white)
-                          : const TextStyle(color: Colors.black),
-                      maxVideoLength: const Duration(seconds: 10),
-                      viewerWidth: MediaQuery.of(context).size.width,
-                      onChangeStart: (value) => _videoStartValue = value,
-                      onChangeEnd: (value) => _videoEndValue = value,
-                      onChangePlaybackState: (value) =>
-                          setState(() => _isVideoPlaying = value),
-                    ),
+        body: ListView(
+          physics: const ClampingScrollPhysics(),
+          shrinkWrap: true,
+          children: [
+            _dailyVideoPlayer(),
+            const SizedBox(height: 8),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                child: TrimViewer(
+                  trimmer: _trimmer,
+                  viewerHeight: 50.0,
+                  type: ViewerType.fixed,
+                  editorProperties: TrimEditorProperties(
+                    borderWidth: 4.0,
+                    circleSize: 6.0,
+                    circleSizeOnDrag: 9.0,
+                    sideTapSize: 21,
+                    circlePaintColor: ThemeService().isDarkTheme()
+                        ? Colors.white
+                        : AppColors.mainColor,
+                    borderPaintColor: ThemeService().isDarkTheme()
+                        ? AppColors.light
+                        : AppColors.mainColor.withOpacity(0.75),
                   ),
+                  durationStyle: DurationStyle.FORMAT_MM_SS,
+                  durationTextStyle: ThemeService().isDarkTheme()
+                      ? const TextStyle(color: Colors.white)
+                      : const TextStyle(color: Colors.black),
+                  maxVideoLength: const Duration(milliseconds: 10900),
+                  viewerWidth: MediaQuery.of(context).size.width,
+                  onChangeStart: (value) => _videoStartValue = value,
+                  onChangeEnd: (value) => _videoEndValue = value,
+                  onChangePlaybackState: (value) =>
+                      setState(() => _isVideoPlaying = value),
                 ),
-                Expanded(child: videoProperties()),
-              ],
+              ),
             ),
-          ),
+            videoProperties(),
+          ],
         ),
       ),
     );
@@ -598,27 +603,33 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                           direction: Axis.vertical,
                           horizontalAlignment: MainAxisAlignment.start,
                           groupValue:
-                              _recordingSettingsController.dateFormat.value == 0
-                                  ? _dateFormatValue
-                                  : _dateWrittenValue,
+                              _recordingSettingsController.dateFormatId.value ==
+                                      0
+                                  ? _dateFormatsForVideoEdit.first
+                                  : _dateFormatsForVideoEdit.last,
                           fillColor: AppColors.yellow,
                           onChanged: (value) => setState(() {
-                            _dateFormatValue = value!;
+                            _dateFinalFormatValueForVideoEdit = value!;
                             // Place date in the bottom if it is text format
-                            _dateFormatValue == _dateFormats[0]
+                            _dateFinalFormatValueForVideoEdit ==
+                                    _dateFormatsForVideoEdit.first
                                 ? isTextDate = false
                                 : isTextDate = true;
 
                             // Save the date format in shared preferences
                             _recordingSettingsController.setDateFormat(
-                                _dateFormatValue == _dateFormats[0] ? 0 : 1);
+                                _dateFinalFormatValueForVideoEdit ==
+                                        _dateFormatsForVideoEdit.first
+                                    ? 0
+                                    : 1);
                           }),
-                          items: _dateFormats,
+                          items: _dateFormatsForVideoEdit,
                           itemBuilder: (item) => RadioButtonBuilder(
                             item,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 10),
                     ],
                   ),
                 ),
@@ -660,12 +671,15 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                     CustomCheckboxListTile(
                       isChecked: isGeotaggingEnabled,
                       onChanged: (_) async {
-                        toggleGeotaggingStatus();
-                        if (isGeotaggingEnabled) {
-                          Utils.logInfo('[Geolocation] - Getting location...');
-                          await _getCurrentPosition();
+                        if (!_isLocationProcessing) {
+                          toggleGeotaggingStatus();
+                          if (isGeotaggingEnabled) {
+                            Utils.logInfo(
+                                '[Geolocation] - Getting location...');
+                            await _getCurrentPosition();
+                          }
+                          setState(() {});
                         }
-                        setState(() {});
                       },
                       padding: EdgeInsets.symmetric(
                           horizontal: MediaQuery.of(context).size.width * 0.04),
@@ -744,7 +758,8 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                 ),
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: MediaQuery.of(context).size.width * 0.04),
+                    horizontal: MediaQuery.of(context).size.width * 0.04,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -756,7 +771,6 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                         ),
                       ),
                       TextField(
-                        cursorColor: Colors.green,
                         maxLines: null,
                         onChanged: (value) => setState(() {
                           _subtitles = value;
@@ -795,6 +809,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
               ),
             ],
           ),
+          const SizedBox(height: 50.0),
         ],
       ),
     );
@@ -817,16 +832,15 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
           children: [
             TextField(
               controller: customLocationTextController,
-              cursorColor: Colors.green,
               decoration: InputDecoration(
                 hintText: 'enterLocation'.tr,
                 filled: true,
                 border: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.green),
+                  borderSide: BorderSide(color: AppColors.green),
                 ),
                 enabledBorder: InputBorder.none,
                 focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.green),
+                  borderSide: BorderSide(color: AppColors.green),
                 ),
               ),
             ),

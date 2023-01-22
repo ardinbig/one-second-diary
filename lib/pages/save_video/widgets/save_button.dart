@@ -6,7 +6,6 @@ import 'package:saf/saf.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../controllers/daily_entry_controller.dart';
-import '../../../controllers/video_count_controller.dart';
 import '../../../routes/app_pages.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/custom_dialog.dart';
@@ -32,6 +31,7 @@ class SaveButton extends StatefulWidget {
     required this.videoStartInMilliseconds,
     required this.videoEndInMilliseconds,
     required this.determinedDate,
+    required this.isFromRecordingPage,
   });
 
   // Finding controllers
@@ -49,6 +49,7 @@ class SaveButton extends StatefulWidget {
   final double videoStartInMilliseconds;
   final double videoEndInMilliseconds;
   final DateTime determinedDate;
+  final bool isFromRecordingPage;
 
   @override
   _SaveButtonState createState() => _SaveButtonState();
@@ -60,8 +61,6 @@ class _SaveButtonState extends State<SaveButton> {
   ValueNotifier<num> saveProgressPercentage = ValueNotifier(0);
 
   final DailyEntryController _dayController = Get.find();
-
-  final VideoCountController _videoCountController = Get.find();
 
   void _saveVideo() async {
     Utils.logInfo('${logTag}Starting to edit ${widget.videoPath} with ffmpeg');
@@ -77,7 +76,7 @@ class _SaveButtonState extends State<SaveButton> {
         builder: (context) => CustomDialog(
           isDoubleAction: false,
           title: 'saveVideoErrorTitle'.tr,
-          content: '${'tryAgainMsg'.tr}\n\nError: ${e.toString()}',
+          content: '${'tryAgainMsg'.tr}',
           actionText: 'Ok',
           actionColor: Colors.red,
           action: () =>
@@ -113,36 +112,39 @@ class _SaveButtonState extends State<SaveButton> {
     return await showDialog(
       context: Get.context!,
       barrierDismissible: false,
-      builder: (context) => ValueListenableBuilder(
-        valueListenable: saveProgressPercentage,
-        builder: (context, value, child) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          title: Text(
-            'processingVideo'.tr,
-            textAlign: TextAlign.center,
-          ),
-          content: Padding(
-            padding: const EdgeInsets.only(bottom: 21.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('doNotCloseTheApp'.tr),
-                const SizedBox(height: 10),
-                Text(
-                  '$value%',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(
-                  backgroundColor: AppColors.green.withOpacity(0.2),
-                  color: AppColors.green,
-                  minHeight: 16,
-                  value: (value / 100).toDouble(),
-                ),
-              ],
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: ValueListenableBuilder(
+          valueListenable: saveProgressPercentage,
+          builder: (context, value, child) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            title: Text(
+              'processingVideo'.tr,
+              textAlign: TextAlign.center,
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 21.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$value%',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 5),
+                  LinearProgressIndicator(
+                    backgroundColor: AppColors.green.withOpacity(0.2),
+                    color: AppColors.green,
+                    minHeight: 16,
+                    value: (value / 100).toDouble(),
+                  ),
+                  const SizedBox(height: 15),
+                  Text('doNotCloseTheApp'.tr),
+                ],
+              ),
             ),
           ),
         ),
@@ -153,9 +155,9 @@ class _SaveButtonState extends State<SaveButton> {
   // Check if user is using a custom profile to determine the output path of the video
   String getVideoOutputPath() {
     String videoOutputPath = '';
-    final determinedDate = widget.determinedDate;
+    final String videoName = DateFormatUtils.getDate(widget.determinedDate);
     final String defaultOutputPath =
-        '${SharedPrefsUtil.getString('appPath')}${DateFormatUtils.getDate(determinedDate)}.mp4';
+        '${SharedPrefsUtil.getString('appPath')}$videoName.mp4';
 
     final selectedProfileIndex =
         SharedPrefsUtil.getInt('selectedProfileIndex') ?? 0;
@@ -171,7 +173,7 @@ class _SaveButtonState extends State<SaveButton> {
         });
 
         videoOutputPath =
-            '${SharedPrefsUtil.getString('appPath')}Profiles/$currentProfileName/${DateFormatUtils.getToday()}.mp4';
+            '${SharedPrefsUtil.getString('appPath')}Profiles/$currentProfileName/$videoName.mp4';
       }
     }
     return videoOutputPath;
@@ -191,9 +193,6 @@ class _SaveButtonState extends State<SaveButton> {
 
     String locOutput = '';
 
-    // Used to not increment videoCount controller
-    bool isEdit = false;
-
     // Copies text font for ffmpeg to storage if it was not copied yet
     final String fontPath = await Utils.copyFontToStorage();
     final String videoPath = widget.videoPath;
@@ -212,7 +211,6 @@ class _SaveButtonState extends State<SaveButton> {
     if (StorageUtils.checkFileExists(finalPath)) {
       Utils.logInfo(
           '${logTag}Video already exists, deleting it to perform edit.');
-      isEdit = true;
       StorageUtils.deleteFile(finalPath);
     }
 
@@ -229,12 +227,32 @@ class _SaveButtonState extends State<SaveButton> {
           ', drawtext=$fontPath:text=\'${widget.userLocation}\':fontsize=$locTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$locPosX:y=$locPosY';
     }
 
+    // Check if video was added from gallery and has an audio stream, adding one if not (screen recordings can be muted for example)
+    String audioStream = '';
+    String origin = 'osd_recording';
+    if (!widget.isFromRecordingPage) {
+      origin = 'gallery';
+      await executeFFprobe(
+              '-v quiet -select_streams a:0 -show_entries stream=codec_type -of default=nw=1:nk=1 $videoPath')
+          .then((session) async {
+        final returnCode = await session.getReturnCode();
+        if (ReturnCode.isSuccess(returnCode)) {
+          final sessionLog = await session.getOutput();
+          if (sessionLog == null || sessionLog.isEmpty) {
+            Utils.logWarning('${logTag}Video has no audio stream, adding one.');
+            audioStream =
+                '-f lavfi -i anullsrc=channel_layout=mono:sample_rate=48000 -shortest';
+          }
+        }
+      });
+    }
+
     // If subtitles TextBox were not left empty, we can allow the command to render the subtitles into the video, otherwise we add empty subtitles to populate the streams with a subtitle stream, so that concat demuxer can work properly when creating a movie
     String subtitlesPath = '';
-    if (widget.subtitles != null && widget.subtitles != '') {
+    if (widget.subtitles?.isEmpty == false) {
       subtitlesPath = await Utils.writeSrt(
         widget.subtitles!,
-        widget.videoDuration,
+        widget.videoEndInMilliseconds - widget.videoStartInMilliseconds,
       );
     } else {
       Utils.logInfo(
@@ -243,11 +261,12 @@ class _SaveButtonState extends State<SaveButton> {
     }
     Utils.logInfo('${logTag}Subtitles file path: $subtitlesPath');
 
-    final subtitles = '-i $subtitlesPath -c copy -c:s mov_text';
     final metadata =
-        '-metadata artist="${Constants.artist}" -metadata album="$currentProfileName"';
+        '-metadata artist="${Constants.artist}" -metadata album="$currentProfileName" -metadata comment="origin=$origin"';
     final trimCommand =
         '-ss ${widget.videoStartInMilliseconds}ms -to ${widget.videoEndInMilliseconds}ms';
+    const scale =
+        'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black';
 
     // Caches the default font to save texts in ffmpeg.
     // The edit may fail unexpectedly in some devices if this is not done.
@@ -255,22 +274,38 @@ class _SaveButtonState extends State<SaveButton> {
 
     // Edit and save video
     final command =
-        '-i $videoPath $subtitles $metadata -vf [in]scale=1920:1080,drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY$locOutput[out]" $trimCommand -r 30 -ac 1 -c:a aac -b:a 256k -codec:v libx264 -pix_fmt yuv420p $finalPath -y';
+        '-i $videoPath $audioStream $metadata -vf [in]$scale,drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY$locOutput[out]" $trimCommand -r 30 -ac 1 -ar 48000 -c:a aac -b:a 256k -c:v libx264 -pix_fmt yuv420p $finalPath -y';
     await executeAsyncFFmpeg(
       command,
       completeCallback: (session) async {
         final returnCode = await session.getReturnCode();
         if (ReturnCode.isSuccess(returnCode)) {
+          final String tempPath = '${finalPath.split('.mp4').first}_noSubs.mp4';
+          final subtitles = '-i $subtitlesPath -c:s mov_text';
+          final subsCommand =
+              '-i $finalPath $subtitles -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default $tempPath -y';
+          await executeFFmpeg(subsCommand).then((session) async {
+            final returnCode = await session.getReturnCode();
+            if (ReturnCode.isSuccess(returnCode)) {
+              Utils.logInfo('${logTag}Video subtitles updated successfully!');
+              StorageUtils.deleteFile(finalPath);
+              StorageUtils.renameFile(tempPath, finalPath);
+            } else {
+              Utils.logError('${logTag}Video subtitles update failed!');
+              final sessionLog = await session.getLogsAsString();
+              final failureStackTrace = await session.getFailStackTrace();
+              Utils.logError('${logTag}Session log: $sessionLog');
+              Utils.logError('${logTag}Failure stacktrace: $failureStackTrace');
+            }
+          });
+
           Utils.logInfo('${logTag}Video edited successfully');
 
           if (widget.determinedDate.difference(DateTime.now()).inDays == 0) {
             _dayController.updateDaily();
           }
 
-          // Updates the controller: videoCount += 1
-          if (!isEdit) {
-            _videoCountController.increaseVideoCount();
-          }
+          Utils.updateVideoCount(showSnackBar: false);
 
           // Showing confirmation popup
           showDialog(
@@ -281,7 +316,7 @@ class _SaveButtonState extends State<SaveButton> {
               title: 'videoSavedTitle'.tr,
               content: 'videoSavedDesc'.tr,
               actionText: 'Ok',
-              actionColor: Colors.green,
+              actionColor: AppColors.green,
               action: () {
                 // Deleting video from cache
                 StorageUtils.deleteFile(widget.videoPath);
@@ -298,15 +333,20 @@ class _SaveButtonState extends State<SaveButton> {
           final failureStackTrace = await session.getFailStackTrace();
           Utils.logError('${logTag}Session log is: $sessionLog');
           Utils.logError('${logTag}Failure stacktrace: $failureStackTrace');
+
+          // Make sure no incomplete file was left in the folder
+          StorageUtils.deleteFile(finalPath);
+
           await showDialog(
             barrierDismissible: false,
             context: Get.context!,
             builder: (context) => CustomDialog(
               isDoubleAction: false,
               title: 'saveVideoErrorTitle'.tr,
-              content: '${'tryAgainMsg'.tr}\n\nError: $sessionLog',
+              content: '${'tryAgainMsg'.tr}',
               actionText: 'Ok',
               actionColor: Colors.red,
+              sendLogs: true,
               action: () =>
                   Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {})),
             ),

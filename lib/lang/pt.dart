@@ -16,7 +16,7 @@ const Map<String, String> pt = {
       'Você precisa ter no mínimo 2 vídeos gravados para criar um filme',
   'movieCreatedTitle': 'Filme criado!',
   'movieCreatedDesc':
-      'O filme foi salvo no Armazenamento Interno na pasta OSD-Movies',
+      'O filme foi salvo no Armazenamento Interno na pasta DCIM/OneSecondDiary/Movies',
   'movieError': 'Erro ao salvar o filme!',
   'tryAgainMsg':
       'Por favor, tente novamente. Se o problemar persistir, contate o desenvolvedor.',
@@ -37,7 +37,7 @@ const Map<String, String> pt = {
   'save': 'Salvar',
   'saveVideoErrorTitle': 'Erro ao salvar o vídeo!',
   'videoSavedTitle': 'Vídeo salvo!',
-  'videoSavedDesc': 'Até amanhã!',
+  'videoSavedDesc': 'Até mais :)',
   'editVideoProperties': 'Editar propriedades',
   'comingSoon': ' Em breve... ',
   'saveVideo': 'Salvar vídeo',
@@ -52,7 +52,7 @@ const Map<String, String> pt = {
   'introDesc3':
       'Se gostar do app, considere apoiar o desenvolvimento com uma doação.',
   'skip': 'Pular',
-  'done': 'Feito',
+  'done': 'Pronto',
   'futureUpdates': 'Atualizações Futuras',
   'licenses': 'Licenças',
   'contact': 'Contato',
@@ -103,7 +103,7 @@ const Map<String, String> pt = {
   'landscape': 'Paisagem',
   'profiles': 'Perfis',
   'tapToSwitch': 'Toque em um perfil para mudar',
-  'createNewProfile': 'Crie novo perfil',
+  'createNewProfile': 'Criar novo perfil',
   'newProfile': 'Novo perfil',
   'deleteProfile': 'Excluir perfil',
   'enterProfileName': 'Digite o nome do perfil',
@@ -115,7 +115,7 @@ const Map<String, String> pt = {
   'reservedProfileName': 'Este é um nome de perfil reservado',
   'creatingMovie':
       'Processando... Por favor, aguarde.\nIsso pode levar alguns minutos.',
-  'doNotCloseTheApp': 'Não feche o aplicativo.',
+  'doNotCloseTheApp': 'Não feche o aplicativo',
   'cancelMovieCreation': 'Cancelar criação de filme',
   'cancelMovieDesc': 'Você tem certeza que deseja cancelar a criação do filme?',
   'reportError': 'Relatar erro',
@@ -139,7 +139,7 @@ const Map<String, String> pt = {
       'Ocorreu um erro ao tentar obter sua localização. Por favor, tente adicionar uma localização personalizada manualmente.',
   'whatsNew': 'Novidades',
   'whatsNewDescv15':
-      'Esta versão trouxe várias funcionalidades novas e melhorias!\n\nConfira nas próximas páginas 😊',
+      'Esta versão traz várias novas funcionalidades e melhorias!\n\nConfira nas próximas páginas 😊',
   'feat1v15': 'Galeria',
   'featDesc1v15': 'Adicione facilmente vídeos da galeria à sua coleção 🤩',
   'feat2v15': 'Legendas',
@@ -159,5 +159,20 @@ const Map<String, String> pt = {
       'Crie filmes personalizados com períodos selecionados ou vídeos específicos 🎥',
   'feat7v15': 'Notificações',
   'featDesc7v15':
-      'Defina notificações personalizadas, escolhendo o melhor horário para te lembrar de gravar seu momento especial 🔔'
+      'Defina notificações personalizadas, escolhendo o melhor horário para te lembrar de gravar seu momento especial 🔔',
+  'default': 'Padrão',
+  'profileNameAlreadyExists': 'O nome do perfil já existe',
+  'profileNameCannotContainSpecialChars':
+      'O nome do perfil não pode conter\ncaracteres especiais',
+  'subtitlesSaved': 'Legendas salvas!',
+  'error': 'Erro',
+  'migrationError':
+      'Ocorreu um erro ao migrar seus vídeos. Por favor, feche o aplicativo e copie manualmente os vídeos de Internal Storage > OneSecondDiary para Internal Storage > DCIM > OneSecondDiary e exclua a pasta antiga em seguida.',
+  'success': 'Sucesso',
+  'migrationSuccess':
+      'Migração concluída! Todos os vídeos e filmes agora estão salvos em Internal Storage > DCIM > OneSecondDiary',
+  'migrationInProgress':
+      'Migrando todos os seus vídeos para a nova pasta do aplicativo, por favor aguarde...',
+  'migrationFolderDeletionError':
+      'Migração concluída, mas ocorreu um erro ao excluir as pastas antigas. Por favor, exclua manualmente.',
 };

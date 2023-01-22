@@ -1,15 +1,14 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_calendar_carousel/classes/event.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart'
     show CalendarCarousel;
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:media_store_plus/media_store_plus.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../controllers/daily_entry_controller.dart';
 import '../../../controllers/lang_controller.dart';
@@ -23,6 +22,7 @@ import '../../../utils/theme.dart';
 import '../../../utils/utils.dart';
 import 'video_subtitles_editor_page.dart';
 
+// TODO(KyleKun): surprise, surprise -> refactor :)
 class CalendarEditorPage extends StatefulWidget {
   const CalendarEditorPage({super.key});
 
@@ -40,37 +40,61 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
   late String appDocDir;
   late String srtFilePath;
   final String _currentDateStr = DateFormatUtils.getToday();
+  DateTime lastSelectedDate = DateTime.now();
   final LanguageController _languageController = Get.find();
   final VideoCountController _videoCountController = Get.find();
   final DailyEntryController _dailyEntryController = Get.find();
+  VideoPlayerController? _controller;
+  final UniqueKey _videoPlayerKey = UniqueKey();
+  final mediaStore = MediaStore();
 
   @override
   void initState() {
+    setMediaStorePath();
     mainColor = ThemeService().isDarkTheme() ? Colors.white : Colors.black;
     allVideos = Utils.getAllVideos(fullPath: true);
-    getSubtitlesPath();
-    getTodaysThumbnail();
+    setSubtitlesPath();
+    initializeTodaysVideoPlayback();
     super.initState();
   }
 
   @override
   void dispose() {
+    _controller?.dispose();
     super.dispose();
   }
 
-  void getSubtitlesPath() {
+  void setMediaStorePath() {
+    final currentProfile = Utils.getCurrentProfile();
+    if (currentProfile.isEmpty || currentProfile == 'Default') {
+      MediaStore.appFolder = 'OneSecondDiary';
+    } else {
+      MediaStore.appFolder = 'OneSecondDiary/Profiles/$currentProfile';
+    }
+  }
+
+  /// Sets the path to save srt file for reading
+  void setSubtitlesPath() {
     appDocDir = SharedPrefsUtil.getString('internalDirectoryPath');
     srtFilePath = '$appDocDir/temp.srt';
   }
 
+  /// Reads subtitles from the video file and sets the [subtitles] variable
   Future<void> getSubtitlesForSelectedDate() async {
-    final getSubsFile = await executeFFmpeg('-i $currentVideo $srtFilePath -y');
+    final getSubsFile = await executeFFmpeg(
+      '-i $currentVideo $srtFilePath -y',
+      showInLogs: false,
+    );
     final resultCode = await getSubsFile.getReturnCode();
     if (ReturnCode.isSuccess(resultCode)) {
       final srtFileContent = await File(srtFilePath).readAsString();
       subtitles = srtFileContent.isEmpty
           ? ''
-          : srtFileContent.trim().split(',000').last;
+          : srtFileContent
+              .trim()
+              .split('00:00:00,000 --> 00:00:')
+              .last
+              .substring(6);
     } else {
       subtitles = '';
     }
@@ -84,157 +108,69 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
     setState(() {});
   }
 
-  Future<void> getTodaysThumbnail() async {
+  /// Initializes the video playback for the current date (today)
+  Future<void> initializeTodaysVideoPlayback() async {
+    final autoPlay = SharedPrefsUtil.getBool('calendarAutoPlay') ?? true;
+    final autoSound = SharedPrefsUtil.getBool('calendarAutoSound') ?? true;
     setState(() {
       wasDateRecorded = allVideos.any((a) => a.contains(_currentDateStr));
       if (wasDateRecorded) {
         currentVideo = allVideos.firstWhere(
           (a) => a.contains(_currentDateStr),
         );
+        _controller = VideoPlayerController.file(File(currentVideo))
+          ..initialize().then((_) async {
+            await _controller?.setLooping(true);
+            await _controller?.setVolume(autoSound ? 1.0 : 0.0);
+            if (autoPlay) await _controller?.play();
+            setState(() {});
+          });
       }
     });
     await getSubtitlesForSelectedDate();
   }
 
-  Future<void> getSelectedDateThumbnail() async {
-    final parsedDate = DateFormatUtils.getDate(_selectedDate);
-    setState(() {
-      wasDateRecorded = allVideos.any((a) => a.contains(parsedDate));
-      if (wasDateRecorded) {
-        currentVideo = allVideos.firstWhere(
-          (a) => a.contains(parsedDate),
-        );
-      }
-    });
-    await getSubtitlesForSelectedDate();
+  /// Initializes the video playback for the selected date
+  Future<void> initializeVideoPlayback(String video) async {
+    if (lastSelectedDate != _selectedDate) {
+      final autoPlay = SharedPrefsUtil.getBool('calendarAutoPlay') ?? true;
+      final autoSound = SharedPrefsUtil.getBool('calendarAutoSound') ?? true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Disposing old controller
+        await _controller?.dispose();
+        _controller = null;
+
+        // Initing new controller
+        _controller = VideoPlayerController.file(File(video))
+          ..initialize().then((_) async {
+            await _controller?.setLooping(true);
+            await _controller?.setVolume(autoSound ? 1.0 : 0.0);
+            if (autoPlay) await _controller?.play();
+            setState(() {
+              lastSelectedDate = _selectedDate;
+            });
+          });
+      });
+    }
   }
 
-  Future<Uint8List?> getThumbnail(String video) async {
-    final thumbnail = await VideoThumbnail.thumbnailData(
-      video: File(video).path,
-      imageFormat: ImageFormat.JPEG,
-      quality: 15,
-    );
-    return thumbnail;
-  }
-
+  /// Picks video from gallery
   Future<void> selectVideoFromGallery() async {
     final rawFile = await ImagePicker().pickVideo(
       source: ImageSource.gallery,
     );
 
+    // Go to the save video page
     if (rawFile != null) {
-      // Video validation before navigation to the video editing page
-      final bool isVideoValid =
-          await _validateInputVideo(rawFile.path, context);
-
-      // Go to the save video page
-      if (isVideoValid) {
-        Get.toNamed(
-          Routes.SAVE_VIDEO,
-          arguments: {
-            'videoPath': rawFile.path,
-            'currentDate': _selectedDate,
-            'isFromRecordingPage': false,
-          },
-        );
-      }
+      Get.toNamed(
+        Routes.SAVE_VIDEO,
+        arguments: {
+          'videoPath': rawFile.path,
+          'currentDate': _selectedDate,
+          'isFromRecordingPage': false,
+        },
+      );
     }
-  }
-
-  // Ensure the video passes all validations before processing
-  Future<bool> _validateInputVideo(
-      String videoPath, BuildContext context) async {
-    return await executeFFprobe(
-            '-v error -print_format json -show_format -select_streams v:0 -show_streams $videoPath')
-        .then((session) async {
-      final returnCode = await session.getReturnCode();
-      if (ReturnCode.isSuccess(returnCode)) {
-        final sessionLog = await session.getOutput();
-        if (sessionLog == null) return false;
-        final Map<String, dynamic> videoStreamDetails =
-            jsonDecode(sessionLog)['streams'][0];
-
-        final num videoWidth = videoStreamDetails['width'];
-        final num videoHeight = videoStreamDetails['height'];
-
-        // Check for video orientation before saving video.
-        // In some videos, the rotation property is not explicity defined which will cause ffprobe to return a null value,
-        // so the workaround here compares the values of video width & height to determine the orientation
-
-        // The orientation is always portrait whenever the video height is greater than the video width
-        if (videoHeight > videoWidth) {
-          await _showPortraitModeErrorDialog();
-          return false;
-        }
-
-        // Check for video aspect ratio before saving video.
-        // In some videos, the DAP/SAP (display/sample aspect ratio) properties are not explicity defined which will cause ffprobe to return a null value,
-        // so the workaround here uses the video width & height to determine the aspect ratio
-        final num videoAspectRatio = (videoWidth / videoHeight).toPrecision(2);
-
-        // 1.78 is the decimal equivalent of 16:9 aspect ratio videos
-        if (videoAspectRatio != 1.78) {
-          await _showAspectRatioErrorDialog();
-          return false;
-        }
-
-        return true;
-      }
-      return false;
-    });
-  }
-
-  Future<void> _showPortraitModeErrorDialog() async {
-    return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        title: Text(
-          'oops'.tr,
-        ),
-        content: Text(
-          'unsupportedPortraitMode'.tr,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.green,
-            ),
-            child: Text('ok'.tr),
-          )
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showAspectRatioErrorDialog() async {
-    return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        title: Text(
-          'oops'.tr,
-        ),
-        content: Text(
-          'videoResolutionWarning'.tr,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.green,
-            ),
-            child: Text('ok'.tr),
-          )
-        ],
-      ),
-    );
   }
 
   Future<void> deleteVideoDialog() async {
@@ -265,7 +201,14 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
           TextButton(
             onPressed: () async {
               // Delete current video from storage
-              await File(currentVideo).delete();
+              await mediaStore.deleteFile(
+                fileName: currentVideo.split('/').last,
+                dirType: DirType.video,
+                dirName: DirName.dcim,
+              );
+
+              Utils.logInfo(
+                  '[CALENDAR] - Deleted video from $_currentDateStr: $currentVideo');
 
               // Reduce the video count recorded by the app
               _videoCountController.reduceVideoCount();
@@ -278,9 +221,8 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
               // Refresh the UI
               setState(() {
                 allVideos = Utils.getAllVideos(fullPath: true);
+                wasDateRecorded = false;
               });
-
-              await getSelectedDateThumbnail();
 
               Navigator.pop(context);
             },
@@ -301,37 +243,11 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16.0),
           child: CalendarCarousel<Event>(
-            childAspectRatio: 1.2,
+            childAspectRatio: 1.25,
             onDayPressed: (DateTime date, List<Event> events) async {
-              setState(
-                () => _selectedDate = date,
-              );
-              final currentVideoExists = allVideos.any(
-                (a) => a.contains(
-                  DateFormatUtils.getDate(
-                    date,
-                    allowCheckFormattingDayFirst: false,
-                  ),
-                ),
-              );
-              if (currentVideoExists) {
-                setState(() {
-                  wasDateRecorded = true;
-                  currentVideo = allVideos.firstWhere(
-                    (a) => a.contains(
-                      DateFormatUtils.getDate(
-                        date,
-                        allowCheckFormattingDayFirst: false,
-                      ),
-                    ),
-                  );
-                });
-                await getSubtitlesForSelectedDate();
-              } else {
-                setState(() {
-                  wasDateRecorded = false;
-                });
-              }
+              if (_selectedDate == date) return;
+              await _controller?.pause();
+              await _changeSelectedDate(date);
             },
             customDayBuilder: (
               bool isSelectable,
@@ -345,6 +261,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
               DateTime date,
             ) {
               if (allVideos.isNotEmpty) {
+                // Get the first recorded video date to not render days before that with day color
                 final firstRecVideoDate = DateTime.parse(
                   allVideos.first.split('/').last.split('.').first,
                 );
@@ -356,6 +273,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                     ),
                   ),
                 );
+                // Do not colorize days before first recording date or future dates
                 if (DateTime.now().compareTo(date) != -1 &&
                     firstRecVideoDate.compareTo(date) != 1) {
                   return Center(
@@ -404,6 +322,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
             ),
             locale: _languageController.selectedLanguage.value,
             shouldShowTransform: false,
+            pageSnapping: true,
             height: MediaQuery.of(context).size.height * 0.42,
             showOnlyCurrentMonthDate: true,
             selectedDateTime: _selectedDate,
@@ -414,40 +333,84 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
             ),
           ),
         ),
-        const SizedBox(
-          height: 10.0,
-        ),
         Expanded(
           child: wasDateRecorded
               ? Column(
                   children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.25,
-                      child: Padding(
-                        padding: const EdgeInsets.all(5.0),
-                        child: FutureBuilder(
-                          future: getThumbnail(currentVideo),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: mainColor),
+                          ),
+                          child: Stack(
+                            children: [
+                              Center(
                                 child: SizedBox(
                                   height: 30,
                                   width: 30,
-                                  child: CircularProgressIndicator(
+                                  child: Icon(
+                                    Icons.hourglass_bottom,
                                     color: mainColor,
                                   ),
                                 ),
-                              );
-                            }
+                              ),
+                              FutureBuilder(
+                                future: initializeVideoPlayback(currentVideo),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const SizedBox();
+                                  }
 
-                            if (snapshot.hasError) {
-                              return Text(
-                                '${snapshot.error}',
-                              );
-                            }
-                            return Image.memory(snapshot.data as Uint8List);
-                          },
+                                  if (snapshot.hasError) {
+                                    return Text(
+                                      '"Error loading video: " + ${snapshot.error}',
+                                    );
+                                  }
+
+                                  // Not sure if it works but if the videoController fails we try to restart the page
+                                  if (_controller?.value.hasError == true) {
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                      _controller?.dispose();
+                                    });
+                                    Get.offAllNamed(Routes.HOME)
+                                        ?.then((_) => setState(() {}));
+                                  }
+
+                                  // VideoPlayer
+                                  if (_controller != null &&
+                                      _controller!.value.isInitialized) {
+                                    return Align(
+                                      alignment: Alignment.center,
+                                      child: Stack(
+                                        fit: StackFit.passthrough,
+                                        children: [
+                                          Align(
+                                            alignment: Alignment.center,
+                                            child: ClipRect(
+                                              child: VideoPlayer(
+                                                key: _videoPlayerKey,
+                                                _controller!,
+                                              ),
+                                            ),
+                                          ),
+                                          Controls(
+                                            controller: _controller,
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  } else {
+                                    return const SizedBox();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -463,6 +426,10 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                               ),
                             ),
                             onPressed: () async {
+                              await pauseOrResumeVideoPlayback(
+                                _controller,
+                                forcePause: true,
+                              );
                               await deleteVideoDialog();
                             },
                             child: Padding(
@@ -483,6 +450,10 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                               ),
                             ),
                             onPressed: () async {
+                              await pauseOrResumeVideoPlayback(
+                                _controller,
+                                forcePause: true,
+                              );
                               Get.to(
                                 VideoSubtitlesEditorPage(
                                   videoPath: currentVideo,
@@ -523,6 +494,8 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                             ),
                           ),
                           onPressed: () async {
+                            Utils.logInfo(
+                                '[CALENDAR] add video button pressed for date $_currentDateStr');
                             await selectVideoFromGallery();
                           },
                           child: Padding(
@@ -538,6 +511,158 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                 ),
         ),
       ],
+    );
+  }
+
+  /// Sets the [_selectedDate] to the given [date] and checks if there is a video for that date
+  Future<void> _changeSelectedDate(DateTime date) async {
+    setState(
+      () => _selectedDate = date,
+    );
+
+    final currentVideoExists = allVideos.any(
+      (a) => a.contains(
+        DateFormatUtils.getDate(
+          date,
+          allowCheckFormattingDayFirst: false,
+        ),
+      ),
+    );
+    if (currentVideoExists) {
+      setState(() {
+        wasDateRecorded = true;
+        currentVideo = allVideos.firstWhere(
+          (a) => a.contains(
+            DateFormatUtils.getDate(
+              date,
+              allowCheckFormattingDayFirst: false,
+            ),
+          ),
+        );
+      });
+      await getSubtitlesForSelectedDate();
+    } else {
+      setState(() {
+        wasDateRecorded = false;
+      });
+    }
+  }
+}
+
+/// Pause or Resume videoplayback
+Future<void> pauseOrResumeVideoPlayback(
+  VideoPlayerController? controller, {
+  bool forcePause = false,
+}) async {
+  if (controller?.value.isInitialized != true) return;
+
+  if (!controller!.value.isPlaying && !forcePause) {
+    await controller.play();
+    SharedPrefsUtil.putBool('calendarAutoPlay', true);
+  } else {
+    await controller.pause();
+    SharedPrefsUtil.putBool('calendarAutoPlay', false);
+  }
+}
+
+/// Controls for the video player
+class Controls extends StatefulWidget {
+  const Controls({super.key, required this.controller});
+
+  final VideoPlayerController? controller;
+
+  @override
+  State<Controls> createState() => _ControlsState();
+}
+
+class _ControlsState extends State<Controls> {
+  late IconData playIcon;
+  late IconData soundIcon;
+
+  @override
+  void initState() {
+    if (widget.controller?.value.isPlaying == true) {
+      playIcon = Icons.pause;
+    } else {
+      playIcon = Icons.play_arrow;
+    }
+
+    if (widget.controller?.value.volume == 0) {
+      soundIcon = Icons.volume_off;
+    } else {
+      soundIcon = Icons.volume_up;
+    }
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await pauseOrResumeVideoPlayback(widget.controller);
+        final isPlaying = widget.controller!.value.isPlaying;
+        setState(() {
+          playIcon = isPlaying ? Icons.pause : Icons.play_arrow;
+        });
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            onTap: () {
+              final bool isMuted = widget.controller!.value.volume == 0;
+              if (isMuted) {
+                SharedPrefsUtil.putBool('calendarAutoSound', true);
+                widget.controller!.setVolume(1);
+                setState(() {
+                  soundIcon = Icons.volume_up;
+                });
+              } else {
+                SharedPrefsUtil.putBool('calendarAutoSound', false);
+                widget.controller!.setVolume(0);
+                setState(() {
+                  soundIcon = Icons.volume_off;
+                });
+              }
+            },
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: Icon(
+                  soundIcon,
+                  color: Colors.white,
+                  shadows: [
+                    const Shadow(
+                      blurRadius: 10.0,
+                      color: Colors.black,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(5.0),
+              child: Icon(
+                playIcon,
+                color: Colors.white,
+                shadows: [
+                  const Shadow(
+                    blurRadius: 10.0,
+                    color: Colors.black,
+                    offset: Offset(0, 0),
+                  ),
+                ],
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 }

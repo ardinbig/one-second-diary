@@ -1,6 +1,5 @@
 import 'dart:io' as io;
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -8,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stack_trace/stack_trace.dart';
+import 'package:synchronized/synchronized.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/video_count_controller.dart';
@@ -21,6 +21,8 @@ final logger = Logger(
   level: Level.verbose,
 );
 
+final lock = Lock();
+
 class Utils {
   static void launchURL(String url) async {
     await launchUrl(
@@ -29,31 +31,43 @@ class Utils {
     );
   }
 
-  static void logInfo(info) {
+  static Future<void> logInfo(info) async {
     logger.i(info);
-    final String file = SharedPrefsUtil.getString('currentLogFile');
     final String now = DateTime.now().toString();
     final String line = '[INFO] $now: ${info.toString()}';
-    appendLineToFile(file, line);
+    await lock.synchronized(() => appendLineToLogFile(line));
   }
 
-  static void logWarning(warning) {
+  static Future<void> logWarning(warning) async {
     logger.w(warning);
-    final String file = SharedPrefsUtil.getString('currentLogFile');
     final String now = DateTime.now().toString();
     final String line = '[WARNING] $now: ${warning.toString()}';
-    appendLineToFile(file, line);
+    await lock.synchronized(() => appendLineToLogFile(line));
   }
 
-  static void logError(error) {
+  static Future<void> logError(error) async {
     logger.e(error);
-    final String file = SharedPrefsUtil.getString('currentLogFile');
     final String now = DateTime.now().toString();
     final String stacktrace =
         Trace.from(StackTrace.current).terse.frames.first.toString();
     final line =
         '[ERROR] $now: ${error.toString()}' + '\nStacktrace: $stacktrace';
-    appendLineToFile(file, line);
+    await lock.synchronized(() => appendLineToLogFile(line));
+  }
+
+  // Add a new line to txt log file
+  static Future<void> appendLineToLogFile(String line) async {
+    final String logFolder = SharedPrefsUtil.getString('internalDirectoryPath');
+    final String fileName = SharedPrefsUtil.getString('currentLogFile');
+
+    // Write the line to the file
+    final file = io.File('$logFolder/Logs/$fileName');
+    await file.writeAsString('$line\n', mode: io.FileMode.writeOnlyAppend);
+  }
+
+  // Example 2022-01-01_12-30-45.txt
+  static String getNewLogFilename() {
+    return '${DateTime.now().toString().split('.')[0].replaceAll(':', '-').replaceAll(' ', '_')}.txt';
   }
 
   /// Used to request Android permissions
@@ -77,22 +91,19 @@ class Utils {
   }
 
   /// Used to request storage-specific Android permissions due to Android 13 breaking changes
-  static Future<bool> requestStoragePermissions() async {
-    final androidDeviceInfo = await DeviceInfoPlugin().androidInfo;
+  static Future<bool> requestStoragePermissions(
+      {required int sdkVersion}) async {
     late final Map<Permission, PermissionStatus> permissionStatuses;
 
-    if (androidDeviceInfo.version.sdkInt <= 32) {
+    if (sdkVersion <= 32) {
       // For android 12 and below devices
       permissionStatuses = await [
         Permission.storage,
-        Permission.manageExternalStorage
       ].request();
     } else {
       permissionStatuses = await [
+        Permission.storage,
         Permission.videos,
-        Permission.photos,
-        Permission.audio,
-        Permission.manageExternalStorage
       ].request();
     }
 
@@ -109,27 +120,6 @@ class Utils {
     } else {
       return false;
     }
-  }
-
-  // Example 2022-01-01_12-30-45.txt
-  static String getTodaysLogFilename() {
-    return '${DateTime.now().toString().split('.')[0].replaceAll(':', '-').replaceAll(' ', '_')}.txt';
-  }
-
-  // Add a new line to txt log file
-  static Future<void> appendLineToFile(String fileName, String line) async {
-    if (fileName.isEmpty) return;
-    final String appPath = SharedPrefsUtil.getString('appPath');
-
-    // Open the file for appending
-    final file = io.File('$appPath/Logs/$fileName');
-    final sink = file.openWrite(mode: io.FileMode.append);
-
-    // Write the line to the file
-    sink.write('$line\n');
-
-    // Close the file
-    await sink.close();
   }
 
   /// Write txt used by ffmpeg to concatenate videos when generating movie
@@ -197,7 +187,8 @@ class Utils {
   // }
 
   /// Write srt file used by ffmpeg to add subtitles to the movie
-  static Future<String> writeSrt(String text, int videoDuration) async {
+  static Future<String> writeSrt(
+      String text, double videoDurationMilliseconds) async {
     final io.Directory directory = await getApplicationDocumentsDirectory();
     final String srtPath = '${directory.path}/subtitles.srt';
     logInfo('[Utils.writeSrt()] - Writing srt file to $srtPath');
@@ -208,30 +199,38 @@ class Utils {
     final io.File file = io.File(srtPath);
 
     // Add linebreaks if a line is > 45 chars
-    text = '$text\n';
-    final List<String> lines = text.split('\n');
-    text = '';
+    String subsContent = '$text\n';
+    final List<String> lines = subsContent.split('\n');
+    subsContent = '';
     for (int i = 0; i < lines.length; i++) {
       if (lines[i].length > 45) {
         final List<String> words = lines[i].split(' ');
         String temp = '';
         for (int j = 0; j < words.length; j++) {
           if (temp.length + words[j].length > 45) {
-            text += '$temp\n';
+            subsContent += '$temp\n';
             temp = '';
           }
           temp += '${words[j]} ';
         }
-        text += '$temp\n';
+        subsContent += '$temp\n';
       } else {
-        text += '${lines[i]}\n';
+        subsContent += '${lines[i]}\n';
       }
     }
 
-    final String totalSeconds = videoDuration == 10 ? '10' : '0$videoDuration';
-    logInfo('[Utils.writeSrt()] - Subtitles total duration $videoDuration');
+    // Calculate subtitles duration and format it
+    final Duration duration =
+        Duration(milliseconds: videoDurationMilliseconds.floor());
+    final int seconds = duration.inSeconds % 60;
+    final int milliseconds = (duration.inMilliseconds % 1000).round();
+    final String secondsAndMilliseconds =
+        "${seconds.toString().padLeft(2, '0')},${milliseconds.toString().padLeft(3, '0')}";
+    logInfo(
+        '[Utils.writeSrt()] - Subtitles total duration $secondsAndMilliseconds');
+
     final String subtitles =
-        '1\r\n00:00:00,000 --> 00:00:$totalSeconds,000\r\n$text\r\n';
+        '1\r\n00:00:00,000 --> 00:00:$secondsAndMilliseconds\r\n$subsContent\r\n';
 
     // Writing file
     await file.writeAsString(subtitles, mode: io.FileMode.write);
@@ -262,8 +261,9 @@ class Utils {
     return currentProfileName;
   }
 
-  /// Get all video files inside OneSecondDiary folder
+  /// Get all video files inside DCIM/OneSecondDiary folder
   static List<String> getAllVideos({bool fullPath = false}) {
+    logInfo('[Utils.getAllVideos()] - Asked for full path: $fullPath');
     // Get current profile
     final currentProfileName = getCurrentProfile();
 
@@ -293,7 +293,8 @@ class Utils {
       // Check if file is a video and if it is in the right format
       final bool isProperVideoFile =
           RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(fileNameCheck) &&
-              filePath.endsWith('.mp4');
+              filePath.endsWith('.mp4') &&
+              !filePath.contains('Movies');
 
       if (isProperVideoFile) {
         // Make sure we are not counting in videos from other profiles if default is selected
@@ -309,44 +310,46 @@ class Utils {
       }
     }
 
+    logInfo('[Utils.getAllVideos()] - ${mp4Files.length} videos found.');
+
     // Sorting files
     mp4Files.sort((a, b) => a.compareTo(b));
-    logInfo('[Utils.getAllVideos()] - Asked for full path: $fullPath');
-    logInfo('[Utils.getAllVideos()] - Sorted videos: $mp4Files');
 
     return mp4Files;
   }
 
   // Update the counter based on the amount of mp4 files inside the app folder
-  static void updateVideoCount() {
-    final allFiles = getAllVideos();
+  static void updateVideoCount({bool showSnackBar = true}) {
     final VideoCountController _videoCountController = Get.find();
-
+    final allFiles = getAllVideos();
     final int numberOfVideos = allFiles.length;
 
-    final snackBar = SnackBar(
-      margin: const EdgeInsets.all(10.0),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.black54,
-      duration: const Duration(seconds: 3),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(25),
+    if (showSnackBar) {
+      final snackBar = SnackBar(
+        margin: const EdgeInsets.all(10.0),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.black54,
+        duration: const Duration(seconds: 3),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(25),
+          ),
         ),
-      ),
-      content: Text(
-        (numberOfVideos != 1)
-            ? '$numberOfVideos ${'foundVideos'.tr}'
-            : '$numberOfVideos ${'foundVideo'.tr}',
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white),
-      ),
-    );
-
-    ScaffoldMessenger.of(Get.context!).showSnackBar(snackBar);
+        content: Text(
+          (numberOfVideos != 1)
+              ? '$numberOfVideos ${'foundVideos'.tr}'
+              : '$numberOfVideos ${'foundVideo'.tr}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white),
+        ),
+      );
+      ScaffoldMessenger.of(Get.context!).showSnackBar(snackBar);
+    }
 
     // Setting videoCount number
     _videoCountController.setVideoCount(numberOfVideos);
+    logInfo(
+        '[Utils.updateVideoCount()] - Video count updated to $numberOfVideos');
   }
 
   /// Get a filtered list of mp4 files names ordered by date to be written on a txt file

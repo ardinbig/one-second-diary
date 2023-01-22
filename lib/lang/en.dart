@@ -15,7 +15,8 @@ const Map<String, String> en = {
   'movieInsufficientVideos':
       'You need to have 2 or more recorded videos in order to create a movie',
   'movieCreatedTitle': 'Movie created!',
-  'movieCreatedDesc': 'Movie saved to storage inside OSD-Movies folder',
+  'movieCreatedDesc':
+      'Movie saved to storage inside DCIM/OneSecondDiary/Movies folder',
   'movieError': 'Error saving the movie!',
   'tryAgainMsg':
       'Please try again. If the problem persists, contact the developer.',
@@ -38,7 +39,7 @@ const Map<String, String> en = {
   'save': 'Save',
   'saveVideoErrorTitle': 'Error saving video!',
   'videoSavedTitle': 'Video saved!',
-  'videoSavedDesc': 'See you tomorrow!',
+  'videoSavedDesc': 'See you later :)',
   'editVideoProperties': 'Edit video properties',
   'comingSoon': ' Coming soon... ',
   'saveVideo': 'Save video',
@@ -115,7 +116,7 @@ const Map<String, String> en = {
   'profileNameCannotBeEmpty': 'Profile name cannot be empty',
   'reservedProfileName': 'This is a reserved profile name',
   'creatingMovie': 'Processing... Please wait.\nThis can take several minutes.',
-  'doNotCloseTheApp': 'Do not close the app.',
+  'doNotCloseTheApp': 'Do not close the app',
   'cancelMovieCreation': 'Cancel movie creation',
   'cancelMovieDesc': 'Are you sure you want to cancel the movie creation?',
   'reportError': 'Report Error',
@@ -162,4 +163,19 @@ const Map<String, String> en = {
   'feat7v15': 'Notifications',
   'featDesc7v15':
       'Set up scheduled daily notifications to remind you to record your special moment 🔔',
+  'default': 'Default',
+  'profileNameAlreadyExists': 'Profile name already exists',
+  'profileNameCannotContainSpecialChars':
+      'Profile name cannot contain\nspecial characters',
+  'subtitlesSaved': 'Subtitles saved!',
+  'error': 'Error',
+  'migrationError':
+      'An error occurred while migrating your videos. Please close the app and manually copy the videos from Internal Storage > OneSecondDiary to Internal Storage > DCIM > OneSecondDiary and delete the old folder afterwards.',
+  'success': 'Success',
+  'migrationSuccess':
+      'Migration successful! All videos and movies are now saved inside Internal Storage > DCIM > OneSecondDiary',
+  'migrationInProgress':
+      'Migrating all your videos to the new app folder, please wait...',
+  'migrationFolderDeletionError':
+      'Migration complete, but an error occurred while deleting the old folders. Please delete it manually.',
 };

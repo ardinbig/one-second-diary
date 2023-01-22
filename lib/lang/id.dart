@@ -16,7 +16,7 @@ const Map<String, String> id = {
       'Anda harus memiliki lebih 2 rekaman video untuk bisa membuat video gabungan',
   'movieCreatedTitle': 'Video dibuat!',
   'movieCreatedDesc':
-      'Video disimpan ke dalam penyimpanan di dalam folder OSD-Movies folder',
+      'Video disimpan ke dalam penyimpanan di dalam folder DCIM/OneSecondDiary/Movies',
   'movieError': 'Gagal menyimpan video!',
   'tryAgainMsg':
       'Coba beberapa saaat lagi. Jika masalah masih tetap ada, hubungi pengembang.',
@@ -38,7 +38,7 @@ const Map<String, String> id = {
   'save': 'Save',
   'saveVideoErrorTitle': 'Terjadi kesalahan saat menyimpan video',
   'videoSavedTitle': 'Video disimpan!',
-  'videoSavedDesc': 'Sampai jumpa besok!',
+  'videoSavedDesc': 'Sampai jumpa besok :)',
   'editVideoProperties': 'Ubah detail video',
   'comingSoon': 'Akan segera datang... ',
   'saveVideo': 'Simpan video',
@@ -116,7 +116,7 @@ const Map<String, String> id = {
   'reservedProfileName': 'Ini adalah nama profil yang dipesan',
   'creatingMovie':
       'Memproses ... tunggu sebentar.\nIni bisa memakan waktu beberapa menit.',
-  'doNotCloseTheApp': 'Jangan tutup aplikasi ini.',
+  'doNotCloseTheApp': 'Jangan tutup aplikasi ini',
   'cancelMovieCreation': 'Batalkan pembuatan video',
   'cancelMovieDesc': 'Apakah Anda yakin ingin membatalkan pembuatan video?',
   'reportError': 'Laporkan kesalahan',
@@ -160,5 +160,20 @@ const Map<String, String> id = {
       'Buat film kustom dengan periode-periode terpilih atau video-video tertentu 🎥',
   'feat7v15': 'Notifikasi',
   'featDesc7v15':
-      'Atur notifikasi harian yang terjadwal untuk mengingatkanmu untuk merekam saat spesial mu 🔔'
+      'Atur notifikasi harian yang terjadwal untuk mengingatkanmu untuk merekam saat spesial mu 🔔',
+  'default': 'Asali',
+  'profileNameAlreadyExists': 'Nama profil sudah ada',
+  'profileNameCannotContainSpecialChars':
+      'Nama profil tidak boleh\nmengandung karakter khusus',
+  'subtitlesSaved': 'Subjudul disimpan!',
+  'error': 'Kesalahan',
+  'migrationError':
+      'Terjadi kesalahan saat migrasi video Anda. Mohon tutup aplikasi dan salin video secara manual dari Internal Storage > OneSecondDiary ke Internal Storage > DCIM > OneSecondDiary dan hapus folder lama setelahnya.',
+  'success': 'Sukses',
+  'migrationSuccess':
+      'Migrasi berhasil! Semua video dan film sekarang disimpan di Internal Storage > DCIM > OneSecondDiary',
+  'migrationInProgress':
+      'Migrasi semua video Anda ke folder aplikasi baru, mohon tunggu ...',
+  'migrationFolderDeletionError':
+      'Migrasi selesai, tetapi terjadi kesalahan saat menghapus folder lama. Mohon hapus secara manual.',
 };

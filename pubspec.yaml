@@ -11,10 +11,7 @@ environment:
 dependencies:
   about: ^2.1.1
   avatar_glow: ^2.0.2
-  camera:
-    git:
-      url: https://github.com/KyleKun/plugins.git
-      path: packages/camera/camera/
+  camera: ^0.10.2+1
   device_info_plus: ^8.0.0
   ffmpeg_kit_flutter_full_gpl: ^5.1.0
   file_picker: ^5.2.4
@@ -32,9 +29,6 @@ dependencies:
   intl: ^0.17.0
   introduction_screen: ^3.1.1
   native_device_orientation: ^1.1.4
-  open_file:
-    git:
-      url: https://github.com/KyleKun/open_file.git
   path_provider: ^2.0.11
   permission_handler: ^10.2.0
   rive: ^0.9.1
@@ -56,6 +50,18 @@ dependencies:
   stack_trace: ^1.10.0
   flutter_archive: ^5.0.0
   flutter_email_sender: ^5.2.0
+  synchronized: ^3.0.0+3
+  open_filex: ^4.3.2
+  media_store_plus: ^0.0.2
+
+# Temp fix for camera plugin on Android 13 (https://github.com/flutter/flutter/issues/109769)
+dependency_overrides:
+  camera_android:
+    git:
+      url: https://github.com/OmarHatem28/plugins.git
+      path: packages/camera/camera_android
+      ref: 8550e0e698f3d358f42d60b090320dea7c3c0775
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

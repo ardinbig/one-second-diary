@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'constants.dart';
-import 'shared_preferences_util.dart';
 import 'storage_utils.dart';
 import 'utils.dart';
 
@@ -51,14 +50,13 @@ class _CustomDialogState extends State<CustomDialog> {
     try {
       Utils.logInfo('${logTag}sending logs to developer...');
 
-      final String appPath = SharedPrefsUtil.getString('appPath');
-      final Directory logsDirectory = Directory('${appPath}Logs/');
-      final Directory appDirectory = await getApplicationDocumentsDirectory();
-      final String zipFilePath = '${appDirectory.path}/logs.zip';
+      final docsDir = await getApplicationDocumentsDirectory();
+      final Directory logsDirectory = Directory('${docsDir.path}/Logs');
+      final String zipFilePath = '${docsDir.path}/logs.zip';
       final File zipFile = File(zipFilePath);
-      Utils.logInfo('${logTag}logsDirectory: ${logsDirectory.path}');
 
       // Delete any previous zip file
+      StorageUtils.deleteFile('${logsDirectory.path}/logs.zip');
       StorageUtils.deleteFile(zipFilePath);
 
       await ZipFile.createFromDirectory(

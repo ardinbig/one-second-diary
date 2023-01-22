@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:wakelock/wakelock.dart';
 
 import '../../../../controllers/video_count_controller.dart';
 import '../../../../enums/export_date_range.dart';
 import '../../../../routes/app_pages.dart';
-// import '../../../../enums/export_orientations.dart';
 import '../../../../utils/constants.dart';
 import '../../../../utils/custom_dialog.dart';
 import '../../../../utils/date_format_utils.dart';
@@ -22,13 +21,11 @@ class CreateMovieButton extends StatefulWidget {
   const CreateMovieButton({
     super.key,
     this.selectedExportDateRange,
-    // required this.selectedOrientation,
     this.customSelectedVideos,
     this.customSelectedVideosIsSelected,
   });
 
   final ExportDateRange? selectedExportDateRange;
-  // final ExportOrientation selectedOrientation;
   final List<String>? customSelectedVideos;
   final List<bool>? customSelectedVideosIsSelected;
 
@@ -43,13 +40,11 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
   String progress = '';
 
   void _openVideo(String filePath) async {
-    await OpenFile.open(filePath);
+    await OpenFilex.open(filePath);
   }
 
   void _createMovie() async {
     Wakelock.enable();
-    // Creates the folder if it is not created yet
-    StorageUtils.createFolder();
 
     setState(() {
       isProcessing = true;
@@ -86,7 +81,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
             title: 'movieErrorTitle'.tr,
             content: 'movieInsufficientVideos'.tr,
             actionText: 'Ok',
-            actionColor: Colors.green,
+            actionColor: AppColors.green,
             action: () => Get.back(),
           ),
         );
@@ -122,9 +117,6 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
 
         Utils.logInfo('${logTag}Base videos folder: $videosFolder');
 
-        // Create a dummy m4a for adding audio stream if necessary
-        // final String dummyM4a = await Utils.writeM4a();
-
         // Create a dummy srt for adding subtitles stream if necessary
         final String dummySubtitles = await Utils.writeSrt('', 0);
 
@@ -134,8 +126,6 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
           final String currentVideo = '$videosFolder$video';
           final String tempVideo =
               '${currentVideo.split('.mp4').first}_temp.mp4';
-
-          // ffmpeg command to get title tag from video metadata
 
           // TODO(KyleKun): this (in special) will need a good refactor for next version
           // Check if video was recorded before v1.5 so we can process what is needed
@@ -231,15 +221,11 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
             if (!hasAudio) {
               Utils.logInfo(
                   '${logTag}No audio stream for $currentVideo, adding one...');
-              // final command =
-              //     '-i $currentVideo -i $dummyM4a -c copy -c:s copy -map 0:v -map 1:a -shortest $tempVideo -y';
-              // final command =
-              //     '-i $currentVideo -i $dummyM4a -af apad -shortest -c:s copy $tempVideo -y';
 
               // Creates an empty audio stream that matches video duration
               // Set the audio bitrate to 256k and sample rate to 48k (aac codec)
               final command =
-                  '-i $currentVideo -f lavfi -i anullsrc=channel_layout=mono:sample_rate=48000 -shortest -b:a 256k -c:v copy -c:a aac $tempVideo -y';
+                  '-i $currentVideo -f lavfi -i anullsrc=channel_layout=mono:sample_rate=48000 -shortest -b:a 256k -c:v copy -c:s copy -c:a aac $tempVideo -y';
               await executeFFmpeg(command).then((session) async {
                 final returnCode = await session.getReturnCode();
                 if (ReturnCode.isSuccess(returnCode)) {
@@ -280,7 +266,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
 
             // Add artist metadata to avoid redoing all that in this video in the future since it was already processed
             await executeFFmpeg(
-                    '-i $currentVideo -metadata artist="${Constants.artist}" -c:v copy -c:a copy -c:s copy $tempVideo -y')
+                    '-i $currentVideo -metadata artist="${Constants.artist}" -metadata album="Default" -metadata comment="origin=osd_recording_old" -c:v copy -c:a copy -c:s copy $tempVideo -y')
                 .then((session) async {
               final returnCode = await session.getReturnCode();
               if (ReturnCode.isSuccess(returnCode)) {
@@ -319,7 +305,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
           // Creating txt that will be used with ffmpeg to concatenate all videos
           final String txtPath = await Utils.writeTxt(selectedVideos);
           final String outputPath =
-              '${SharedPrefsUtil.getString('moviesPath')}OneSecondDiary-Movie-${_movieCount.movieCount.value}-$today.mp4';
+              '${SharedPrefsUtil.getString('moviesPath')}OSD-Movie-${_movieCount.movieCount.value}-$today.mp4';
           Utils.logInfo('${logTag}Movie will be saved as: $outputPath');
 
           setState(() {
@@ -327,14 +313,13 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
           });
 
           // Create movie by concatenating all videos
-          // -vsync vfr -async 1 are used to avoid video and audio desync, audio is delayed in longer videos if this option is not used
           await executeFFmpeg(
-                  '-f concat -safe 0 -i $txtPath -vsync 1 -map 0 -c copy $outputPath -y')
+                  '-f concat -safe 0 -i $txtPath -r 30 -map 0 -c copy $outputPath -y')
               .then(
             (session) async {
               final returnCode = await session.getReturnCode();
+              _movieCount.increaseMovieCount();
               if (ReturnCode.isSuccess(returnCode)) {
-                _movieCount.updateMovieCount();
                 showDialog(
                   barrierDismissible: false,
                   context: Get.context!,
@@ -343,7 +328,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
                     title: 'movieCreatedTitle'.tr,
                     content: 'movieCreatedDesc'.tr,
                     actionText: 'Ok',
-                    actionColor: Colors.green,
+                    actionColor: AppColors.green,
                     action: () {
                       Get.offAllNamed(Routes.HOME);
                       Future.delayed(
@@ -353,8 +338,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
                     },
                   ),
                 );
-                Utils.logInfo(
-                    '${logTag}Video saved in gallery in the folder OSD-Movies!');
+                Utils.logInfo('${logTag}Movie saved!');
               } else if (ReturnCode.isCancel(returnCode)) {
                 Utils.logWarning('${logTag}Execution was cancelled');
               } else {
@@ -371,6 +355,7 @@ class _CreateMovieButtonState extends State<CreateMovieButton> {
                   builder: (context) => CustomDialog(
                     isDoubleAction: false,
                     title: 'movieError'.tr,
+                    sendLogs: true,
                     content:
                         '${'tryAgainMsg'.tr}\nCode error: ${session.getFailStackTrace()}',
                     actionText: 'Ok',

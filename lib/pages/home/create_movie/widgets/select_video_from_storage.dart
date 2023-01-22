@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
+import '../../../../utils/constants.dart';
 import '../../../../utils/date_format_utils.dart';
 import '../../../../utils/lazy_future_builder.dart';
 import '../../../../utils/utils.dart';
@@ -129,8 +130,9 @@ class _SelectVideoFromStorageState extends State<SelectVideoFromStorage> {
                         margin: const EdgeInsets.all(15.0),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color:
-                                isSelected[index] ? Colors.green : Colors.white,
+                            color: isSelected[index]
+                                ? AppColors.green
+                                : Colors.white,
                             width: isSelected[index] ? 4 : 1,
                           ),
                           borderRadius: BorderRadius.circular(5),
