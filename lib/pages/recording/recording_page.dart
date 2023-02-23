@@ -144,7 +144,7 @@ class _RecordingPageState extends State<RecordingPage>
         ),
       );
     });
-    Overlay.of(context)?.insert(_overlayEntry);
+    Overlay.of(context).insert(_overlayEntry);
     Future.delayed(const Duration(seconds: 1), _overlayEntry.remove);
 
     _cameraController.setExposurePoint(offset);
@@ -153,6 +153,7 @@ class _RecordingPageState extends State<RecordingPage>
 
   Future<void> _getAvailableCameras() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await Utils.requestPermission(Permission.microphone);
     await Utils.requestPermission(Permission.camera);
     _availableCameras = await availableCameras();
     _initCamera(_availableCameras.first);
@@ -528,9 +529,12 @@ class _RecordingPageState extends State<RecordingPage>
           fit: StackFit.expand,
           children: [
             /// Camera preview
-            RotatedBox(
-              quarterTurns: previewQuarterTurns,
-              child: _addCameraScreen(context),
+            Align(
+              alignment: Alignment.center,
+              child: RotatedBox(
+                quarterTurns: previewQuarterTurns,
+                child: _addCameraScreen(context),
+              ),
             ),
 
             /// Countdown timer

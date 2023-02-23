@@ -7,7 +7,7 @@ const Map<String, String> en = {
       'Thank you so much for using the app!\n\nIf you wish to support the development,\nfeel free to make a donation ^^',
   'donationPageTitle': 'Support app development',
   'about': 'About',
-  'appVersion': 'Version 1.5',
+  'appVersion': 'Version 1.5.1',
   'record': 'Record',
   'createMovie': 'Create movie',
   'settings': 'Settings',
@@ -120,7 +120,7 @@ const Map<String, String> en = {
   'cancelMovieCreation': 'Cancel movie creation',
   'cancelMovieDesc': 'Are you sure you want to cancel the movie creation?',
   'reportError': 'Report Error',
-  'errorMailSubject': '[One Second Diary - v1.5] App Error Report',
+  'errorMailSubject': '[One Second Diary - v1.5.1] App Error Report',
   'errorMailBody':
       'Please describe the error you encountered and steps to reproduce it. Thank you!',
   'oops': 'Oops!',
@@ -178,4 +178,12 @@ const Map<String, String> en = {
       'Migrating all your videos to the new app folder, please wait...',
   'migrationFolderDeletionError':
       'Migration complete, but an error occurred while deleting the old folders. Please delete it manually.',
+  'preferences': 'Preferences',
+  'forceNativeCamera': 'Force native camera',
+  'forceNativeCameraDescription':
+      'Use the native camera app to record videos instead of the built-in camera. This can solve recording issues for devices with lower performance capabilities. This option does not work on Android 13.',
+  'movies': 'Movies',
+  'myMovies': 'My movies',
+  'noMoviesFound': 'No movies found',
+  'play': 'Play',
 };

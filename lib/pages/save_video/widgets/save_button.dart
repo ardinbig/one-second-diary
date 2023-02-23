@@ -233,7 +233,7 @@ class _SaveButtonState extends State<SaveButton> {
     if (!widget.isFromRecordingPage) {
       origin = 'gallery';
       await executeFFprobe(
-              '-v quiet -select_streams a:0 -show_entries stream=codec_type -of default=nw=1:nk=1 $videoPath')
+              '-v quiet -select_streams a:0 -show_entries stream=codec_type -of default=nw=1:nk=1 "$videoPath"')
           .then((session) async {
         final returnCode = await session.getReturnCode();
         if (ReturnCode.isSuccess(returnCode)) {
@@ -274,16 +274,16 @@ class _SaveButtonState extends State<SaveButton> {
 
     // Edit and save video
     final command =
-        '-i $videoPath $audioStream $metadata -vf [in]$scale,drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY$locOutput[out]" $trimCommand -r 30 -ac 1 -ar 48000 -c:a aac -b:a 256k -c:v libx264 -pix_fmt yuv420p $finalPath -y';
+        '-i "$videoPath" $audioStream $metadata -vf [in]$scale,drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY$locOutput[out]" $trimCommand -r 30 -ac 1 -ar 48000 -c:a aac -b:a 256k -c:v libx264 -pix_fmt yuv420p -crf 20 -preset slow "$finalPath" -y';
     await executeAsyncFFmpeg(
       command,
       completeCallback: (session) async {
+        final String tempPath = '${finalPath.split('.mp4').first}_noSubs.mp4';
         final returnCode = await session.getReturnCode();
         if (ReturnCode.isSuccess(returnCode)) {
-          final String tempPath = '${finalPath.split('.mp4').first}_noSubs.mp4';
           final subtitles = '-i $subtitlesPath -c:s mov_text';
           final subsCommand =
-              '-i $finalPath $subtitles -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default $tempPath -y';
+              '-i "$finalPath" $subtitles -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default "$tempPath" -y';
           await executeFFmpeg(subsCommand).then((session) async {
             final returnCode = await session.getReturnCode();
             if (ReturnCode.isSuccess(returnCode)) {
@@ -334,8 +334,9 @@ class _SaveButtonState extends State<SaveButton> {
           Utils.logError('${logTag}Session log is: $sessionLog');
           Utils.logError('${logTag}Failure stacktrace: $failureStackTrace');
 
-          // Make sure no incomplete file was left in the folder
+          // Make sure no incomplete files were left in the folder
           StorageUtils.deleteFile(finalPath);
+          StorageUtils.deleteFile(tempPath);
 
           await showDialog(
             barrierDismissible: false,
@@ -362,8 +363,8 @@ class _SaveButtonState extends State<SaveButton> {
           num tempProgressValue =
               (statistics.getTime() ~/ totalVideoDuration) / 10;
           // Ideally the value should not exceed 100%, but the output also considers milliseconds so we estimate to 100.
-          if (tempProgressValue > 100) {
-            tempProgressValue = 100;
+          if (tempProgressValue >= 100) {
+            tempProgressValue = 99.9;
           }
           saveProgressPercentage.value = tempProgressValue;
         }

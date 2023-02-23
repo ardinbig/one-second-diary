@@ -111,7 +111,7 @@ class _VideoSubtitlesEditorPageState extends State<VideoSubtitlesEditorPage> {
           }
 
           command =
-              '-i ${widget.videoPath} -i $subtitles -c:s mov_text -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default $tempFilePath -y';
+              '-i "${widget.videoPath}" -i $subtitles -c:s mov_text -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default "$tempFilePath" -y';
 
           await executeFFmpeg(command).then((session) async {
             final returnCode = await session.getReturnCode();
@@ -200,6 +200,9 @@ class _VideoSubtitlesEditorPageState extends State<VideoSubtitlesEditorPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: TextField(
                   controller: subtitlesController,
+                  style: TextStyle(
+                    fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                  ),
                   maxLines: null,
                   onChanged: (value) => setState(() {
                     _subtitles = value;

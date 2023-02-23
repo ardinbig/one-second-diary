@@ -7,7 +7,7 @@ const Map<String, String> pt = {
       'Muito obrigado por usar o app!\n\nSe desejar apoiar o desenvolvimento, sinta-se livre para fazer uma doação ^^',
   'donationPageTitle': 'Apoiar o desenvolvimento',
   'about': 'Sobre',
-  'appVersion': 'Versão 1.5',
+  'appVersion': 'Versão 1.5.1',
   'record': 'Gravar',
   'createMovie': 'Criar filme',
   'settings': 'Configurações',
@@ -119,6 +119,9 @@ const Map<String, String> pt = {
   'cancelMovieCreation': 'Cancelar criação de filme',
   'cancelMovieDesc': 'Você tem certeza que deseja cancelar a criação do filme?',
   'reportError': 'Relatar erro',
+  'errorMailSubject': '[One Second Diary - v1.5.1] Relatório de erro',
+  'errorMailBody':
+      'Por favor descreva o erro e quais passos executar para reproduzir o mesmo. Obrigado!',
   'oops': 'Oops!',
   'videoResolutionWarning':
       'Esta resolução de vídeo não é suportada no momento. Certifique-se de que foi gravado em modo paisagem (proporção 16:9)',
@@ -175,4 +178,12 @@ const Map<String, String> pt = {
       'Migrando todos os seus vídeos para a nova pasta do aplicativo, por favor aguarde...',
   'migrationFolderDeletionError':
       'Migração concluída, mas ocorreu um erro ao excluir as pastas antigas. Por favor, exclua manualmente.',
+  'preferences': 'Preferências',
+  'forceNativeCamera': 'Forçar câmera nativa',
+  'forceNativeCameraDescription':
+      'Use o aplicativo de câmera nativo para gravar vídeos em vez da câmera do app. Isso pode resolver problemas de gravação para dispositivos com capacidades de desempenho mais baixas. Esta opção não funciona no Android 13.',
+  'movies': 'Filmes',
+  'myMovies': 'Meus filmes',
+  'noMoviesFound': 'Nenhum filme encontrado',
+  'play': 'Reproduzir',
 };

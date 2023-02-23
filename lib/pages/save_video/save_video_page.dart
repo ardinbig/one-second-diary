@@ -6,7 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:group_radio_button/group_radio_button.dart';
-// import 'package:video_player/video_player.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:video_trimmer/video_trimmer.dart';
 
 import '../../controllers/recording_settings_controller.dart';
@@ -15,6 +15,7 @@ import '../../utils/constants.dart';
 import '../../utils/custom_checkbox_list_tile.dart';
 import '../../utils/custom_dialog.dart';
 import '../../utils/date_format_utils.dart';
+import '../../utils/shared_preferences_util.dart';
 import '../../utils/storage_utils.dart';
 import '../../utils/theme.dart';
 import '../../utils/utils.dart';
@@ -299,11 +300,31 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
     });
   }
 
-  void closePopupAndPushToRecording(String cacheVideoPath) {
+  Future<void> closePopupAndPushToRecording(String cacheVideoPath) async {
     // Deleting video from cache
     StorageUtils.deleteFile(cacheVideoPath);
+    _trimmer.videoPlayerController?.dispose();
     Get.back();
-    Get.offNamed(Routes.RECORDING);
+    final sdkVersion = SharedPrefsUtil.getInt('sdkVersion');
+    final forceNativeCamera =
+        SharedPrefsUtil.getBool('forceNativeCamera') ?? false;
+    if ((sdkVersion != null && sdkVersion < 29) || forceNativeCamera) {
+      Get.offNamed(Routes.HOME);
+      final videoFile =
+          await ImagePicker().pickVideo(source: ImageSource.camera);
+      if (videoFile != null) {
+        Get.offNamed(
+          Routes.SAVE_VIDEO,
+          arguments: {
+            'videoPath': videoFile.path,
+            'currentDate': DateTime.now(),
+            'isFromRecordingPage': true,
+          },
+        );
+      }
+    } else {
+      Get.offNamed(Routes.RECORDING);
+    }
   }
 
   Color invert(Color color) {
@@ -441,7 +462,8 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
               content: 'discardVideoDesc'.tr,
               actionText: 'yes'.tr,
               actionColor: AppColors.green,
-              action: () => closePopupAndPushToRecording(_tempVideoPath),
+              action: () async =>
+                  await closePopupAndPushToRecording(_tempVideoPath),
               action2Text: 'no'.tr,
               action2Color: Colors.red,
               action2: () => Get.back(),
@@ -771,6 +793,10 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                         ),
                       ),
                       TextField(
+                        style: TextStyle(
+                          fontFamily:
+                              DefaultTextStyle.of(context).style.fontFamily,
+                        ),
                         maxLines: null,
                         onChanged: (value) => setState(() {
                           _subtitles = value;
@@ -854,6 +880,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                 toggleGeotaggingStatus();
               }
               Navigator.pop(context);
+              setState(() {});
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.green,

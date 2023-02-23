@@ -7,7 +7,7 @@ const Map<String, String> es = {
       '¡Muchas gracias por usar la aplicación!\n\Si deseas ayudar al desarrollo y contribuir para seguir mejorando nuestros servidores, \napóyanos con una donación ^^.',
   'donationPageTitle': '¡Apóyanos!',
   'about': 'Acerca de',
-  'appVersion': 'Versión 1.5',
+  'appVersion': 'Versión 1.5.1',
   'record': 'Grabar',
   'createMovie': 'Crear película',
   'settings': 'Ajustes',
@@ -176,4 +176,12 @@ const Map<String, String> es = {
       'Migrando todos tus videos a la nueva carpeta de la aplicación, por favor espera...',
   'migrationFolderDeletionError':
       'Migración completa, pero ocurrió un error al eliminar las carpetas antiguas. Por favor, elimínelas manualmente.',
+  'preferences': 'Preferencias',
+  'forceNativeCamera': 'Forzar cámara nativa',
+  'forceNativeCameraDescription':
+      'Usa la aplicación de cámara nativa para grabar videos en lugar de la cámara incorporada. Esto puede solucionar problemas de grabación para dispositivos con capacidades de rendimiento más bajas. Esta opción no funciona en Android 13.',
+  'movies': 'Películas',
+  'myMovies': 'Mis películas',
+  'noMoviesFound': 'No se encontraron películas',
+  'play': 'Reproducir',
 };

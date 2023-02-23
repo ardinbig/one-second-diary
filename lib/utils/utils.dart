@@ -164,28 +164,6 @@ class Utils {
     return txtPath;
   }
 
-  /// Write dummy m4a file used by ffmpeg to add audio to the a video
-  // static Future<String> writeM4a() async {
-  //   final io.Directory directory = await getApplicationDocumentsDirectory();
-  //   final String m4aPath = '${directory.path}/dummy.m4a';
-
-  //   // Check if file exists and end it here if so
-  //   // if (StorageUtils.checkFileExists(m4aPath)) return m4aPath;
-
-  //   // ffmpeg command to create m4a file with 48000Hz sample rate
-
-  //   try {
-  //     await executeFFmpeg(
-  //       '-f lavfi -i anullsrc=cl=mono -t 1 $m4aPath -y',
-  //     );
-  //     debugPrint('Dummy m4a file created');
-  //   } catch (e) {
-  //     print(e);
-  //   }
-
-  //   return m4aPath;
-  // }
-
   /// Write srt file used by ffmpeg to add subtitles to the movie
   static Future<String> writeSrt(
       String text, double videoDurationMilliseconds) async {
@@ -259,6 +237,34 @@ class Utils {
     logInfo('[Utils.getCurrentProfile()] - Selected profile: $profileLog');
 
     return currentProfileName;
+  }
+
+  /// Get all video files inside DCIM/OneSecondDiary/Movies folder
+  static List<String> getAllMovies({bool fullPath = false}) {
+    logInfo('[Utils.getAllMovies()] - Asked for full path: $fullPath');
+
+    // Default directory
+    final io.Directory directory =
+        io.Directory(SharedPrefsUtil.getString('moviesPath'));
+
+    final List<io.FileSystemEntity> files =
+        directory.listSync(recursive: true, followLinks: false);
+    final List<String> mp4Files = [];
+
+    // Get all mp4 files
+    for (int i = 0; i < files.length; i++) {
+      if (files[i].path.endsWith('.mp4')) {
+        if (fullPath) {
+          mp4Files.add(files[i].path);
+        } else {
+          mp4Files.add(files[i].path.split('/').last);
+        }
+      }
+    }
+
+    logInfo('[Utils.getAllMovies()] - Found ${mp4Files.length} movies');
+
+    return mp4Files.reversed.toList();
   }
 
   /// Get all video files inside DCIM/OneSecondDiary folder

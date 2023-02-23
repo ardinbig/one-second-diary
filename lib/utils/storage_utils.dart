@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:wakelock/wakelock.dart';
 
 import '../routes/app_pages.dart';
 import 'constants.dart';
@@ -34,6 +35,7 @@ class StorageUtils {
     // Get android sdk info
     final androidDeviceInfo = await DeviceInfoPlugin().androidInfo;
     final sdkVersion = androidDeviceInfo.version.sdkInt;
+    SharedPrefsUtil.putInt('sdkVersion', sdkVersion);
 
     final mediaStorePlugin = MediaStore();
 
@@ -102,22 +104,27 @@ class StorageUtils {
           SharedPrefsUtil.getString('moviesPath')
               .replaceFirst('DCIM/OneSecondDiary/Movies/', 'OSD-Movies/'));
 
-      // TODO(me): Test on Android 9, 10, 11 (12 & 13 OK)
       if (await oldAppFolder.exists()) {
         // Map all files inside old folders
         final oldFolderFiles =
             await oldAppFolder.list(recursive: true).toList();
-        final oldMoviesFolderFiles =
-            await oldMoviesFolder.list(recursive: true).toList();
+
+        // Remove files that contain Logs in path
+        oldFolderFiles.removeWhere((file) => file.path.contains('Logs'));
 
         // Avoid repeating it if the migration was already done and user forgot to delete old folder
         final newFolderFiles =
             await appDirectory.list(recursive: true).toList();
+        List<String> alreadyMigratedFiles = [];
         if (newFolderFiles.length >= oldFolderFiles.length) {
           Utils.logInfo(
             '[StorageUtils] - Old videos folder already migrated',
           );
           return;
+        } else if (newFolderFiles.isNotEmpty) {
+          alreadyMigratedFiles =
+              newFolderFiles.map((file) => file.path.split('/').last).toList();
+          debugPrint('Already migrated files: $alreadyMigratedFiles');
         }
 
         showDialog(
@@ -162,8 +169,8 @@ class StorageUtils {
         );
 
         try {
+          Wakelock.enable();
           debugPrint(oldFolderFiles.toString());
-          debugPrint(oldMoviesFolderFiles.toString());
 
           // Control how many files were found to check if matches the copied number
           int validFiles = 0;
@@ -174,7 +181,8 @@ class StorageUtils {
             // Handle profile folders for beta users
             if (file is io.File &&
                 file.path.contains('Profiles') &&
-                file.path.endsWith('.mp4')) {
+                file.path.endsWith('.mp4') &&
+                !alreadyMigratedFiles.contains(file.path.split('/').last)) {
               validFiles++;
               final pathSplitted = file.path.split('/');
 
@@ -227,7 +235,9 @@ class StorageUtils {
             }
 
             // Copy only mp4 files to root path (default profile)
-            else if (file is io.File && file.path.endsWith('.mp4')) {
+            else if (file is io.File &&
+                file.path.endsWith('.mp4') &&
+                !alreadyMigratedFiles.contains(file.path.split('/').last)) {
               MediaStore.appFolder = 'OneSecondDiary';
               validFiles++;
               final copyFile =
@@ -256,45 +266,56 @@ class StorageUtils {
 
           // If copying videos succeeded, then delete old folder and proceed to movies migration
           if (validFiles == copiedFiles) {
-            // Copy all movies files to new folder
-            await Future.forEach(oldMoviesFolderFiles, (file) async {
-              if (file is io.File && file.path.endsWith('.mp4')) {
-                MediaStore.appFolder = 'OneSecondDiary/Movies';
-                final tempFolderPath = '${internalDirectoryPath.path}/Movies/';
-                await io.Directory(tempFolderPath).create(recursive: true);
-                final copyFile = '$tempFolderPath${file.path.split('/').last}';
-                await file.copy(copyFile);
-                await mediaStorePlugin
-                    .saveFile(
-                  tempFilePath: copyFile,
-                  dirType: DirType.video,
-                  dirName: DirName.dcim,
-                )
-                    .then((_) {
-                  deleteFile(copyFile);
+            if (await oldMoviesFolder.exists()) {
+              final oldMoviesFolderFiles =
+                  await oldMoviesFolder.list(recursive: true).toList();
+              debugPrint(oldMoviesFolderFiles.toString());
+              // Copy all movies files to new folder
+              await Future.forEach(oldMoviesFolderFiles, (file) async {
+                if (file is io.File && file.path.endsWith('.mp4')) {
+                  MediaStore.appFolder = 'OneSecondDiary/Movies';
+                  final tempFolderPath =
+                      '${internalDirectoryPath.path}/Movies/';
+                  await io.Directory(tempFolderPath).create(recursive: true);
+                  final copyFile =
+                      '$tempFolderPath${file.path.split('/').last}';
+                  await file.copy(copyFile);
+                  await mediaStorePlugin
+                      .saveFile(
+                    tempFilePath: copyFile,
+                    dirType: DirType.video,
+                    dirName: DirName.dcim,
+                  )
+                      .then((_) {
+                    deleteFile(copyFile);
 
-                  // We try to delete the original file right away after copy to avoid increased storage usage
-                  try {
-                    deleteFile(file.path);
-                  } catch (e) {
-                    // Do nothing
-                  }
-                });
-                debugPrint('[MediaStore] Copied movie $copyFile');
+                    // We try to delete the original file right away after copy to avoid increased storage usage
+                    try {
+                      deleteFile(file.path);
+                    } catch (e) {
+                      // Do nothing
+                    }
+                  });
+                  debugPrint('[MediaStore] Copied movie $copyFile');
+                }
+              });
+
+              try {
+                // Clean old movies folder
+                await oldMoviesFolder.delete(recursive: true);
+                Utils.logWarning(
+                  '[StorageUtils] - Migrated movies and deleted old folder',
+                );
+              } catch (e) {
+                // Do nothing
               }
-            });
+            }
 
             // Clean old videos folder
             try {
               await oldAppFolder.delete(recursive: true);
               Utils.logWarning(
                 '[StorageUtils] - Migrated videos and deleted old folder',
-              );
-
-              // Clean old movies folder
-              await oldMoviesFolder.delete(recursive: true);
-              Utils.logWarning(
-                '[StorageUtils] - Migrated movies and deleted old folder',
               );
             } catch (e) {
               Utils.logError(
@@ -364,6 +385,7 @@ class StorageUtils {
             ),
           );
         } finally {
+          Wakelock.disable();
           Utils.updateVideoCount();
           Get.offAllNamed(Routes.HOME);
         }
