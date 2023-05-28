@@ -208,7 +208,7 @@ class _VideoSubtitlesEditorPageState extends State<VideoSubtitlesEditorPage> {
                     _subtitles = value;
                   }),
                   decoration: InputDecoration(
-                    hintText: ('enterSubtitles'.tr).split('(').first,
+                    hintText: 'enterSubtitles'.tr.split('(').first,
                     filled: true,
                     border: const OutlineInputBorder(
                       borderSide: BorderSide(color: AppColors.green),

@@ -55,7 +55,7 @@ class DateFormatUtils {
     // Default format for English and other languages
     month = Constants.enMonths[monthNumber - 1];
     // Used to remove leading 0
-    day = (int.parse(day)).toString();
+    day = int.parse(day).toString();
     // Day suffix
     final String suffix = getEnglishDaySuffix(day);
     return '$month $day$suffix, $year';
@@ -69,7 +69,7 @@ class DateFormatUtils {
     if (Get.locale!.languageCode == 'es') {
       return true;
     }
-    if (ui.window.locale.countryCode == 'BR') {
+    if (ui.PlatformDispatcher.instance.locale.countryCode == 'BR') {
       return true;
     }
     return false;
@@ -95,7 +95,8 @@ class DateFormatUtils {
   }
 
   /// Get the given date and format it properly
-  static String getDate(DateTime date, {bool allowCheckFormattingDayFirst = false}) {
+  static String getDate(DateTime date,
+      {bool allowCheckFormattingDayFirst = false}) {
     // Adding a leading zero on Days and Months <= 9
     final String day = date.day <= 9 ? '0${date.day}' : '${date.day}';
     final String month = date.month <= 9 ? '0${date.month}' : '${date.month}';
@@ -126,9 +127,11 @@ class DateFormatUtils {
   static DateTime parseToDateTime(String date, {bool? isDayFirst}) {
     isDayFirst ??= isDayFirstPattern();
 
-    final String day = isDayFirst ? date.split('-').first : date.split('-').last;
+    final String day =
+        isDayFirst ? date.split('-').first : date.split('-').last;
     final String month = date.split('-')[1];
-    final String year = isDayFirst ? date.split('-').last : date.split('-').first;
+    final String year =
+        isDayFirst ? date.split('-').last : date.split('-').first;
 
     return DateTime(year.toInt(), month.toInt(), day.toInt());
   }
