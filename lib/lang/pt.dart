@@ -7,19 +7,17 @@ const Map<String, String> pt = {
       'Muito obrigado por usar o app!\n\nSe desejar apoiar o desenvolvimento, sinta-se livre para fazer uma doação ^^',
   'donationPageTitle': 'Apoiar o desenvolvimento',
   'about': 'Sobre',
-  'appVersion': 'Versão 1.5.1',
+  'appVersion': 'Versão 1.5.3',
   'record': 'Gravar',
   'createMovie': 'Criar filme',
   'settings': 'Configurações',
   'movieErrorTitle': 'Filme não criado!',
-  'movieInsufficientVideos':
-      'Você precisa ter no mínimo 2 vídeos gravados para criar um filme',
+  'movieInsufficientVideos': 'Você precisa ter no mínimo 2 vídeos gravados para criar um filme',
   'movieCreatedTitle': 'Filme criado!',
   'movieCreatedDesc':
       'O filme foi salvo no Armazenamento Interno na pasta DCIM/OneSecondDiary/Movies',
   'movieError': 'Erro ao salvar o filme!',
-  'tryAgainMsg':
-      'Por favor, tente novamente. Se o problemar persistir, contate o desenvolvedor.',
+  'tryAgainMsg': 'Por favor, tente novamente. Se o problemar persistir, contate o desenvolvedor.',
   'create': 'Criar',
   'days': 'dias',
   'day': 'dia',
@@ -44,13 +42,11 @@ const Map<String, String> pt = {
   'discardVideoTitle': 'Descartar gravação?',
   'discardVideoDesc': 'Pressione "Sim" para gravar novamente',
   'introTitle1': 'Grave 1 segundo todos os dias',
-  'introDesc1':
-      'Escolha um momento especial do seu dia que você gostaria de se lembrar no futuro.',
+  'introDesc1': 'Escolha um momento especial do seu dia que você gostaria de se lembrar no futuro.',
   'introTitle2': 'Crie o filme da sua vida',
   'introDesc2': 'Junte todos os seus vídeos com o clique de um botão',
   'introTitle3': 'Sem anúncios e totalmente grátis',
-  'introDesc3':
-      'Se gostar do app, considere apoiar o desenvolvimento com uma doação.',
+  'introDesc3': 'Se gostar do app, considere apoiar o desenvolvimento com uma doação.',
   'skip': 'Pular',
   'done': 'Pronto',
   'futureUpdates': 'Atualizações Futuras',
@@ -113,13 +109,12 @@ const Map<String, String> pt = {
       'Todos os vídeos associados a este perfil também serão excluídos permanentemente. Você tem certeza que deseja continuar?',
   'profileNameCannotBeEmpty': 'O nome do perfil não pode estar vazio',
   'reservedProfileName': 'Este é um nome de perfil reservado',
-  'creatingMovie':
-      'Processando... Por favor, aguarde.\nIsso pode levar alguns minutos.',
+  'creatingMovie': 'Processando... Por favor, aguarde.\nIsso pode levar alguns minutos.',
   'doNotCloseTheApp': 'Não feche o aplicativo',
   'cancelMovieCreation': 'Cancelar criação de filme',
   'cancelMovieDesc': 'Você tem certeza que deseja cancelar a criação do filme?',
   'reportError': 'Relatar erro',
-  'errorMailSubject': '[One Second Diary - v1.5.1] Relatório de erro',
+  'errorMailSubject': '[One Second Diary - v1.5.3] Relatório de erro',
   'errorMailBody':
       'Por favor descreva o erro e quais passos executar para reproduzir o mesmo. Obrigado!',
   'oops': 'Oops!',
@@ -128,8 +123,7 @@ const Map<String, String> pt = {
   'unsupportedPortraitMode':
       'Vídeos em modo retrato não são suportados no momento. Selecione outro vídeo.',
   'processingVideo': 'Processando vídeo',
-  'deleteVideoWarning':
-      'Tem certeza que deseja excluir permanentemente este vídeo?',
+  'deleteVideoWarning': 'Tem certeza que deseja excluir permanentemente este vídeo?',
   'deleteVideo': 'Excluir vídeo',
   'addSubtitles': 'Adicionar legendas',
   'dateColorAndFormat': 'Cor e formato de data',
@@ -146,8 +140,7 @@ const Map<String, String> pt = {
   'feat1v15': 'Galeria',
   'featDesc1v15': 'Adicione facilmente vídeos da galeria à sua coleção 🤩',
   'feat2v15': 'Legendas',
-  'featDesc2v15':
-      'Adicione ou edite legendas para incluir mais detalhes do seu dia 📝',
+  'featDesc2v15': 'Adicione ou edite legendas para incluir mais detalhes do seu dia 📝',
   'feat3v15': 'Geotagging',
   'featDesc3v15':
       'Adicione localização automática ou manual aos seus vídeos para se lembrar onde cada momento aconteceu 📍',
@@ -155,18 +148,15 @@ const Map<String, String> pt = {
   'featDesc4v15':
       'Crie perfis diferentes para salvar seus vídeos separadamente e alterne facilmente entre eles 🤗',
   'feat5v15': 'Calendário',
-  'featDesc5v15':
-      'Veja e edite qualquer um dos seus dias gravados em um calendário 📅',
+  'featDesc5v15': 'Veja e edite qualquer um dos seus dias gravados em um calendário 📅',
   'feat6v15': 'Filmes',
-  'featDesc6v15':
-      'Crie filmes personalizados com períodos selecionados ou vídeos específicos 🎥',
+  'featDesc6v15': 'Crie filmes personalizados com períodos selecionados ou vídeos específicos 🎥',
   'feat7v15': 'Notificações',
   'featDesc7v15':
       'Defina notificações personalizadas, escolhendo o melhor horário para te lembrar de gravar seu momento especial 🔔',
   'default': 'Padrão',
   'profileNameAlreadyExists': 'O nome do perfil já existe',
-  'profileNameCannotContainSpecialChars':
-      'O nome do perfil não pode conter\ncaracteres especiais',
+  'profileNameCannotContainSpecialChars': 'O nome do perfil não pode conter\ncaracteres especiais',
   'subtitlesSaved': 'Legendas salvas!',
   'error': 'Erro',
   'migrationError':
@@ -181,9 +171,42 @@ const Map<String, String> pt = {
   'preferences': 'Preferências',
   'forceNativeCamera': 'Forçar câmera nativa',
   'forceNativeCameraDescription':
-      'Use o aplicativo de câmera nativo para gravar vídeos em vez da câmera do app. Isso pode resolver problemas de gravação para dispositivos com capacidades de desempenho mais baixas. Esta opção não funciona no Android 13.',
+      'Use o aplicativo de câmera nativo para gravar vídeos em vez da câmera do app. Isso pode resolver problemas de gravação para dispositivos com capacidades de desempenho mais baixas. Esta opção não funciona em alguns dispositivos.',
   'movies': 'Filmes',
   'myMovies': 'Meus filmes',
   'noMoviesFound': 'Nenhum filme encontrado',
   'play': 'Reproduzir',
+  'saveVideoTabOne': 'Geral',
+  'saveVideoTabTwo': 'Localização',
+  'saveVideoTabThree': 'Legendas',
+  'useExperimentalPicker': 'Selecionador de arquivos experimental',
+  'useExperimentalPickerDescription':
+      'Use o selecionador de arquivos experimental para selecionar vídeos da galeria. Isso permite a visualização do vídeo antes da seleção, tempos de carregamento mais rápidos e filtrar diretamente as gravações para a data selecionada. Desative se você tiver algum problema ou preferir o método antigo.',
+  'currentProfile': 'Perfil atual:',
+  'change': 'Alterar',
+  'sendLogs': 'Enviar logs?',
+  'sendLogsDescription':
+      'Se você está enfrentando um problema, por favor toque em "Sim" para incluir os logs que me ajudarão a encontrar o problema. Se for uma sugestão ou outro tópico, por favor toque em "Não".',
+  'whatsNewDescv152':
+      'A versão 1.5.3 trouxe várias correções e melhorias!\n\nConfira nas próximas páginas 😊',
+  'feat1v152': 'Processamento Mais Rápido',
+  'featDesc1v152': 'Editar vídeos grandes ficou muito mais rápido 🚀',
+  'feat2v152': 'Melhoria na Edição de Vídeos',
+  'featDesc2v152':
+      'Escolha o seu momento com mais precisão com os novos botões de corte rápido e uma barra de edição aprimorada 🎞️',
+  'feat3v152': 'Novo Seletor de Arquivos Experimental',
+  'featDesc3v152':
+      'O novo seletor de arquivos experimental permite pré-visualizar e filtrar seus vídeos por data, facilitando adicionar vídeos antigos 📅 (Você pode desativá-lo nas Preferências se tiver problemas)',
+  'feat4v152': 'Bloqueio de Orientação',
+  'featDesc4v152':
+      'Ao gravar no aplicativo, toque no novo botão após posicionar seu telefone para bloquear a orientação e evitar resultados inesperados 📱',
+  'feat5v152': 'E mais...',
+  'featDesc5v152':
+      'Você também encontrará algumas pequenas melhorias visuais e correções de erros 🐛',
+  'useFilterInExperimentalPicker': 'Filtrar data para escolher vídeos',
+  'useFilterInExperimentalPickerDescription':
+      'Quando ativado, selecionar datas passadas filtrará os vídeos por essa data. Quando desativado, todos os vídeos serão mostrados. Funciona apenas com o seletor de arquivos experimental.',
+  'useAlternativeCalendarColors': 'Usar cores alternativas para o calendário',
+  'useAlternativeCalendarColorsDescription':
+      'Muda as cores verde e vermelho no calendário para azul e amarelo. Útil para pessoas daltônicas.'
 };

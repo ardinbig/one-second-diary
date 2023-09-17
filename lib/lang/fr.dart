@@ -7,28 +7,23 @@ const Map<String, String> fr = {
       "Merci beaucoup d'utiliser l'application !\n\nSi vous souhaitez soutenir le développement,\nn'hésitez pas à faire un don ^^",
   'donationPageTitle': 'Soutenir le développement',
   'about': 'À propos',
-  'appVersion': 'Version 1.5.1',
+  'appVersion': 'Version 1.5.3',
   'record': 'Enregistrement',
   'createMovie': 'Créer un film',
   'settings': 'Paramètres',
   'movieErrorTitle': 'Film non créé !',
-  'movieInsufficientVideos':
-      'Vous devez avoir au moins 2 vidéos enregistrées pour créer un film.',
+  'movieInsufficientVideos': 'Vous devez avoir au moins 2 vidéos enregistrées pour créer un film.',
   'movieCreatedTitle': 'Film créé !',
-  'movieCreatedDesc':
-      'Film sauvegardé dans le dossier DCIM/OneSecondDiary/Movies.',
+  'movieCreatedDesc': 'Film sauvegardé dans le dossier DCIM/OneSecondDiary/Movies.',
   'movieError': 'Erreur lors de la sauvegarde du film !',
-  'tryAgainMsg':
-      'Veuillez réessayer. Si le problème persiste, contactez le développeur.',
+  'tryAgainMsg': 'Veuillez réessayer. Si le problème persiste, contactez le développeur.',
   'create': 'Créer',
   'days': 'jours',
   'day': 'jour',
   'totalRecordedTitle': 'Vous avez enregistré :',
-  'tapBelowToGenerate':
-      'Appuyez sur le bouton ci-dessous pour\ngénérer un seul fichier vidéo :',
+  'tapBelowToGenerate': 'Appuyez sur le bouton ci-dessous pour\ngénérer un seul fichier vidéo :',
   'editQuestionTitle': 'Editer la vidéo ?',
-  'editQuestion':
-      'Votre enregistrement précédent sera supprimé, voulez-vous continuer ?',
+  'editQuestion': 'Votre enregistrement précédent sera supprimé, voulez-vous continuer ?',
   'yes': 'Oui',
   'no': 'Non',
   'edit': 'Modifier',
@@ -69,8 +64,7 @@ const Map<String, String> fr = {
   'scheduleTime': 'Horaire',
   'test': 'Test',
   'notificationTitle': 'Hé !',
-  'notificationBody':
-      "N'oubliez pas d'enregistrer une seconde de votre journée. 👀",
+  'notificationBody': "N'oubliez pas d'enregistrer une seconde de votre journée. 👀",
   'recordingSettings': "Paramètres d'enregistrement",
   'seconds': 'Secondes: ',
   'timer': 'Minuteur : ',
@@ -116,8 +110,7 @@ const Map<String, String> fr = {
       'Toutes les vidéos associées à ce profil seront également supprimées en permanence. Êtes-vous sûr de continuer?',
   'profileNameCannotBeEmpty': 'Le nom du profil ne peut pas être vide',
   'reservedProfileName': 'Ceci est un nom de profil réservé',
-  'creatingMovie':
-      'Traitement... Veuillez patienter.\nCela peut prendre quelques minutes.',
+  'creatingMovie': 'Traitement... Veuillez patienter.\nCela peut prendre quelques minutes.',
   'doNotCloseTheApp': 'Ne fermez pas l\'application',
   'cancelMovieCreation': 'Annuler la création du film',
   'cancelMovieDesc': 'Voulez-vous vraiment annuler la création du film ?',
@@ -134,8 +127,7 @@ const Map<String, String> fr = {
   'dateColorAndFormat': 'Couleur et format de date',
   'locationServicesDisabled':
       'Les services de localisation sont désactivés sur votre appareil. Veuillez les activer et réessayer.',
-  'locationPermissionDenied':
-      'Les autorisations de localisation ont été refusées.',
+  'locationPermissionDenied': 'Les autorisations de localisation ont été refusées.',
   'locationPermissionPermanentlyDenied':
       'Les autorisations de localisation sont refusées de manière permanente. Veuillez les activer manuellement dans les paramètres de votre appareil.',
   'locationServiceError':
@@ -144,8 +136,7 @@ const Map<String, String> fr = {
   'whatsNewDescv15':
       'Cette version a apporté de nombreuses nouvelles fonctionnalités et améliorations!\n\nJetez un coup d\'œil aux prochaines pages 😊',
   'feat1v15': 'Galerie',
-  'featDesc1v15':
-      'Ajouter facilement des vidéos de la galerie à votre collection 🤩',
+  'featDesc1v15': 'Ajouter facilement des vidéos de la galerie à votre collection 🤩',
   'feat2v15': 'Sous-titres',
   'featDesc2v15':
       'Ajouter ou modifier des sous-titres pour inclure plus de détails sur votre journée 📝',
@@ -156,8 +147,7 @@ const Map<String, String> fr = {
   'featDesc4v15':
       'Créez plusieurs profils pour enregistrer vos vidéos séparément et basculer facilement entre eux 🤗',
   'feat5v15': 'Calendrier',
-  'featDesc5v15':
-      'Afficher et modifier tous les jours enregistrés dans un calendrier 📅',
+  'featDesc5v15': 'Afficher et modifier tous les jours enregistrés dans un calendrier 📅',
   'feat6v15': 'Films',
   'featDesc6v15':
       'Générer des films personnalisés avec des périodes sélectionnées ou des vidéos spécifiques 🎥',
@@ -182,9 +172,42 @@ const Map<String, String> fr = {
   'preferences': 'Préférences',
   'forceNativeCamera': 'Forcer l\'utilisation de la caméra native',
   'forceNativeCameraDescription':
-      'Utilisez l\'application de caméra native pour enregistrer des vidéos au lieu de la caméra intégrée. Cela peut résoudre les problèmes d\'enregistrement pour les appareils dotés de capacités de performance inférieures. Cette option ne fonctionne pas sur Android 13.',
+      'Utilisez l\'application appareil photo native pour enregistrer des vidéos au lieu de l\'appareil photo intégré. Cela peut résoudre les problèmes d\'enregistrement pour les appareils ayant des capacités de performance inférieures. Cela peut ne pas fonctionner sur certains appareils.',
   'movies': 'Films',
   'myMovies': 'Mes films',
   'noMoviesFound': 'Aucun film trouvé',
   'play': 'Jouer',
+  'saveVideoTabOne': 'Général',
+  'saveVideoTabTwo': 'Emplacement',
+  'saveVideoTabThree': 'Sous-titres',
+  'useExperimentalPicker': 'Sélecteur de fichiers expérimental',
+  'useExperimentalPickerDescription':
+      'Utilisez le sélecteur de fichiers expérimental pour sélectionner des vidéos depuis la galerie. Cela permet de prévisualiser la vidéo avant de la sélectionner, d\'accélérer les temps de chargement et d\'afficher directement les enregistrements pour la date sélectionnée. Désactivez-le si vous rencontrez des problèmes ou préférez l\'ancienne méthode.',
+  'currentProfile': 'Profil actuel:',
+  'change': 'Changer',
+  'sendLogs': 'Envoyer les journaux?',
+  'sendLogsDescription':
+      'Si vous rencontrez un problème, veuillez appuyer sur "Oui" pour inclure les journaux qui m\'aideront à trouver le problème. Si c\'est une suggestion de fonctionnalité ou un autre sujet, veuillez appuyer sur "Non".',
+  'whatsNewDescv152':
+      'La version 1.5.3 a apporté plusieurs corrections et améliorations!\n\nDécouvrez-le dans les pages suivantes 😊',
+  'feat1v152': 'Traitement vidéo plus rapide',
+  'featDesc1v152': 'L\'édition de grandes vidéos est maintenant beaucoup plus rapide 🚀',
+  'feat2v152': 'Amélioration de la découpe vidéo',
+  'featDesc2v152':
+      'Choisissez votre moment plus précisément avec les nouveaux boutons de découpe rapide et une barre de découpe améliorée 🎞️',
+  'feat3v152': 'Nouveau sélecteur de fichiers expérimental',
+  'featDesc3v152':
+      'Le nouveau sélecteur de fichiers expérimental permet de prévisualiser et de filtrer vos vidéos par date, fini le défilement lorsque vous ajoutez des vidéos antérieures 📅 (Vous pouvez le désactiver dans les Préférences si vous rencontrez des problèmes)',
+  'feat4v152': 'Verrouillage de l\'orientation',
+  'featDesc4v152':
+      'Lors de l\'enregistrement dans l\'application, appuyez sur le nouveau bouton après avoir positionné votre téléphone pour verrouiller l\'orientation et éviter des résultats inattendus 📱',
+  'feat5v152': 'Et plus encore...',
+  'featDesc5v152':
+      'Vous trouverez également quelques petites améliorations visuelles et corrections de bugs 🐛',
+  'useFilterInExperimentalPicker': 'Utilisez le filtre de date pour choisir des vidéos',
+  'useFilterInExperimentalPickerDescription':
+      'Lorsqu\'il est activé, sélectionner des dates passées filtrera les vidéos par cette date. Lorsqu\'il est désactivé, toutes les vidéos seront affichées. Fonctionne uniquement avec le sélecteur de fichiers expérimental.',
+  'useAlternativeCalendarColors': 'Utilisez des couleurs de calendrier alternatives',
+  'useAlternativeCalendarColorsDescription':
+      'Change le vert et le rouge dans le calendrier en bleu et jaune. Utile pour les personnes daltoniennes.'
 };

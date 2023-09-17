@@ -1,3 +1,32 @@
+## v1.5.3 - 09/2023
+- Added option to change calendar days color for colorblind users
+- Added option to disable date filter in experimental file picker
+- Added reverse filter order button in experimental file picker
+- Added option to start recording by pressing volume buttons
+- Store location metadata in video when geotagging is enabled
+- Autofocus and capitalize first letter of custom locale and subtitles text fields
+- Remember last recording settings (which camera was used and geotagging checkbox)
+
+## v1.5.2 - 09/2023
+- Added quick trim shortcuts in save video page for a more precise editing
+- Added a new "lock orientation" button in the recording page
+- Added a new experimental file picker with:
+    - Filter support: past dates will show videos recorded on that date on the top
+    - Preview support: videos can be fully watched before being selected
+- Added Czech localization
+- Added option to change profile in save video page
+- Added option to send logs when contacting developer
+- Improved video saving speed by processing only the selected part instead of the whole video
+- Improved save video page by separating options in tabs
+- Improved subtitles text field making it fully visible with longer texts by using a dialog
+- Fixed saving video error when locale has special characters
+- Fixed saving video error when color parsing fails
+- Fixed calendar page resetting to current date after returning from save video page for past dates
+- Fixed videoplayer showing some landscape videos rotated in preview
+- Fixed videos deletion not working if files were manually moved to app folder
+- Fixed movie creation that includes videos from before v1.5
+- Fixed movie deletion not updating the movie list correctly
+
 ## v1.5.1 - 02/2023
 - Improved movies viewer page ordering movies by most recent
 - Fixed subtitles text field not recognizing some cyrillic characters

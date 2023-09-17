@@ -1,8 +1,9 @@
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:saf/saf.dart';
+import 'package:media_store_plus/media_store_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../controllers/daily_entry_controller.dart';
@@ -22,6 +23,7 @@ class SaveButton extends StatefulWidget {
     required this.dateColor,
     required this.dateFormat,
     required this.isTextDate,
+    required this.userPosition,
     required this.userLocation,
     required this.subtitles,
     required this.videoDuration,
@@ -40,6 +42,7 @@ class SaveButton extends StatefulWidget {
   final Color dateColor;
   final String dateFormat;
   final bool isTextDate;
+  final Position? userPosition;
   final String? userLocation;
   final String? subtitles;
   final int videoDuration;
@@ -59,6 +62,7 @@ class _SaveButtonState extends State<SaveButton> {
   final String logTag = '[SAVE RECORDING] - ';
   String currentProfileName = 'Default';
   ValueNotifier<num> saveProgressPercentage = ValueNotifier(0);
+  final mediaStore = MediaStore();
 
   final DailyEntryController _dayController = Get.find();
 
@@ -79,8 +83,7 @@ class _SaveButtonState extends State<SaveButton> {
           content: '${'tryAgainMsg'.tr}',
           actionText: 'Ok',
           actionColor: Colors.red,
-          action: () =>
-              Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {})),
+          action: () => Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {})),
           sendLogs: true,
         ),
       );
@@ -156,11 +159,9 @@ class _SaveButtonState extends State<SaveButton> {
   String getVideoOutputPath() {
     String videoOutputPath = '';
     final String videoName = DateFormatUtils.getDate(widget.determinedDate);
-    final String defaultOutputPath =
-        '${SharedPrefsUtil.getString('appPath')}$videoName.mp4';
+    final String defaultOutputPath = '${SharedPrefsUtil.getString('appPath')}$videoName.mp4';
 
-    final selectedProfileIndex =
-        SharedPrefsUtil.getInt('selectedProfileIndex') ?? 0;
+    final selectedProfileIndex = SharedPrefsUtil.getInt('selectedProfileIndex') ?? 0;
     if (selectedProfileIndex == 0) {
       // If this is true, it means we are using the default profile, so the output folder would be the default output path
       videoOutputPath = defaultOutputPath;
@@ -179,8 +180,7 @@ class _SaveButtonState extends State<SaveButton> {
     return videoOutputPath;
   }
 
-  Future<void> _editWithFFmpeg(
-      bool isGeotaggingEnabled, BuildContext context) async {
+  Future<void> _editWithFFmpeg(bool isGeotaggingEnabled, BuildContext context) async {
     // Positions to render texts for the (x, y co-ordinates)
     // According to the ffmpeg docs, the x, y positions are relative to the top-left side of the output frame.
     final String datePosY = widget.isTextDate ? 'h-th-40' : '40';
@@ -191,40 +191,76 @@ class _SaveButtonState extends State<SaveButton> {
     const double dateTextSize = 40;
     const double locTextSize = 40;
 
-    String locOutput = '';
+    String locale = '';
 
     // Copies text font for ffmpeg to storage if it was not copied yet
     final String fontPath = await Utils.copyFontToStorage();
     final String videoPath = widget.videoPath;
 
     // Parses the color code to a hex code format which can be read by ffmpeg
-    final String parsedDateColor =
-        '0x${widget.dateColor.value.toRadixString(16).substring(2)}';
-    final String parsedTextOutlineColor =
-        '0x${widget.textOutlineColor.value.toRadixString(16).substring(2)}';
+    String parsedDateColor = '';
+    String parsedTextOutlineColor = '';
+
+    try {
+      parsedDateColor = '0x${widget.dateColor.value.toRadixString(16).substring(2)}';
+      parsedTextOutlineColor = '0x${widget.textOutlineColor.value.toRadixString(16).substring(2)}';
+    } catch (e) {
+      Utils.logError(logTag + e.toString());
+      Utils.logInfo('Error parsing colors, applying default white.');
+      parsedDateColor = '0xffffff';
+      parsedTextOutlineColor = '0x000000';
+    }
 
     // Path to save the final video
     final String finalPath = getVideoOutputPath();
     Utils.logInfo('${logTag}Video will be saved to: $finalPath');
 
     // Check if video already exists and delete it if so (Edit daily feature)
+    bool shouldContinue = true;
     if (StorageUtils.checkFileExists(finalPath)) {
-      Utils.logInfo(
-          '${logTag}Video already exists, deleting it to perform edit.');
-      StorageUtils.deleteFile(finalPath);
+      await showDialog(
+        barrierDismissible: false,
+        context: Get.context!,
+        builder: (context) => CustomDialog(
+            isDoubleAction: true,
+            title: 'editQuestionTitle'.tr,
+            content: 'editQuestion'.tr,
+            actionText: 'yes'.tr,
+            actionColor: AppColors.green,
+            action: () async {
+              Utils.logInfo('${logTag}Video already exists, deleting it to perform edit.');
+              try {
+                StorageUtils.deleteFile(finalPath);
+              } catch (e) {
+                Utils.logError('${logTag}Error deleting old video: $e, trying MediaStore');
+                await StorageUtils.deleteFileWithMediaStore(finalPath);
+              } finally {
+                Get.back();
+              }
+            },
+            action2Text: 'no'.tr,
+            action2Color: Colors.red,
+            action2: () {
+              Utils.logInfo('${logTag}User chose not to edit video.');
+              shouldContinue = false;
+              Get.back();
+              Get.back();
+            }),
+      );
     }
 
-    // Checks to ensure special read/write permissions with storage access framework
-    final hasSafDirPerms =
-        await Saf.isPersistedPermissionDirectoryFor(finalPath) ?? false;
-    if (hasSafDirPerms) {
-      await Saf(finalPath).getDirectoryPermission(isDynamic: true);
-    }
+    // If the video already exists and the user chose not to edit it, we can stop the process here
+    if (!shouldContinue) return;
+
+    // Caches the default font to save texts in ffmpeg.
+    // The edit may fail unexpectedly in some devices if this is not done.
+    await FFmpegKitConfig.setFontDirectory(fontPath);
 
     // If geotagging is enabled, we can allow the command to render the location text into the video
     if (isGeotaggingEnabled) {
-      locOutput =
-          ', drawtext=$fontPath:text=\'${widget.userLocation}\':fontsize=$locTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$locPosX:y=$locPosY';
+      final String locationTextFilePath = await Utils.writeLocationTxt(widget.userLocation);
+      locale =
+          ', drawtext=textfile=$locationTextFilePath:fontfile=$fontPath:fontsize=$locTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$locPosX:y=$locPosY';
     }
 
     // Check if video was added from gallery and has an audio stream, adding one if not (screen recordings can be muted for example)
@@ -240,8 +276,7 @@ class _SaveButtonState extends State<SaveButton> {
           final sessionLog = await session.getOutput();
           if (sessionLog == null || sessionLog.isEmpty) {
             Utils.logWarning('${logTag}Video has no audio stream, adding one.');
-            audioStream =
-                '-f lavfi -i anullsrc=channel_layout=mono:sample_rate=48000 -shortest';
+            audioStream = '-f lavfi -i anullsrc=channel_layout=mono:sample_rate=48000 -shortest';
           }
         }
       });
@@ -249,56 +284,63 @@ class _SaveButtonState extends State<SaveButton> {
 
     // If subtitles TextBox were not left empty, we can allow the command to render the subtitles into the video, otherwise we add empty subtitles to populate the streams with a subtitle stream, so that concat demuxer can work properly when creating a movie
     String subtitlesPath = '';
+    final int videoStartInMilliseconds = widget.videoStartInMilliseconds.floor();
+    final int videoEndInMilliseconds = widget.videoEndInMilliseconds.floor();
     if (widget.subtitles?.isEmpty == false) {
       subtitlesPath = await Utils.writeSrt(
         widget.subtitles!,
-        widget.videoEndInMilliseconds - widget.videoStartInMilliseconds,
+        videoStartInMilliseconds,
+        videoEndInMilliseconds,
       );
     } else {
-      Utils.logInfo(
-          '${logTag}Subtitles TextField was left empty. Adding empty subtitles...');
-      subtitlesPath = await Utils.writeSrt('', 0);
+      Utils.logInfo('${logTag}Subtitles TextField was left empty. Adding empty subtitles...');
+      subtitlesPath = await Utils.writeSrt('', 0, 1);
     }
     Utils.logInfo('${logTag}Subtitles file path: $subtitlesPath');
 
-    final metadata =
+    String locationMetadata = '';
+    if (isGeotaggingEnabled) {
+      final latitude = Utils.locationPositionToString(widget.userPosition?.latitude);
+      final longitude = Utils.locationPositionToString(widget.userPosition?.longitude);
+      final localeName = widget.userLocation?.replaceAll('"', '\\"');
+      locationMetadata = ' -metadata location="$latitude$longitude/$localeName"';
+    }
+
+    // Add metadata to know the version of the app it was made, profile it was saved to and the origin of the video
+    final baseMetadata =
         '-metadata artist="${Constants.artist}" -metadata album="$currentProfileName" -metadata comment="origin=$origin"';
-    final trimCommand =
-        '-ss ${widget.videoStartInMilliseconds}ms -to ${widget.videoEndInMilliseconds}ms';
+
+    final metadata = baseMetadata + locationMetadata;
+
+    // Trim video to the selected range
+    final trim = '-ss ${videoStartInMilliseconds}ms -to ${videoEndInMilliseconds}ms';
+
+    // Scale video to 1920x1080 and add black padding if needed
     const scale =
         'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black';
 
-    // Caches the default font to save texts in ffmpeg.
-    // The edit may fail unexpectedly in some devices if this is not done.
-    await FFmpegKitConfig.setFontDirectory(fontPath);
+    // Add date to the video
+    final date =
+        ',drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY';
 
-    // Edit and save video
+    // Add subtitles to the video
+    const subtitles = '-c:s mov_text -map 1:v -map 1:a? -map 0:s -disposition:s:0 default';
+
+    // Apply default edit settings: framerate 30, audio channels 1, audio rate 48000, audio bitrate 256k, video codec libx264, pixel format yuv420p, crf 20, preset slow
+    const defaultEditSettings =
+        '-r 30 -ac 1 -ar 48000 -c:a aac -b:a 256k -c:v libx264 -pix_fmt yuv420p -crf 20 -preset slow';
+
+    // Full command to edit and save video
     final command =
-        '-i "$videoPath" $audioStream $metadata -vf [in]$scale,drawtext="$fontPath:text=\'${widget.dateFormat}\':fontsize=$dateTextSize:fontcolor=\'$parsedDateColor\':borderw=${widget.textOutlineWidth}:bordercolor=$parsedTextOutlineColor:x=$datePosX:y=$datePosY$locOutput[out]" $trimCommand -r 30 -ac 1 -ar 48000 -c:a aac -b:a 256k -c:v libx264 -pix_fmt yuv420p -crf 20 -preset slow "$finalPath" -y';
+        '-i "$subtitlesPath" $trim -i "$videoPath" $audioStream $metadata -vf [in]$scale$date$locale[out]" $defaultEditSettings $subtitles "$finalPath" -y';
+
+    Utils.logInfo('${logTag}FFmpeg full command: $command');
+
     await executeAsyncFFmpeg(
       command,
       completeCallback: (session) async {
-        final String tempPath = '${finalPath.split('.mp4').first}_noSubs.mp4';
         final returnCode = await session.getReturnCode();
         if (ReturnCode.isSuccess(returnCode)) {
-          final subtitles = '-i $subtitlesPath -c:s mov_text';
-          final subsCommand =
-              '-i "$finalPath" $subtitles -c:v copy -c:a copy -map 0:v -map 0:a? -map 1 -disposition:s:0 default "$tempPath" -y';
-          await executeFFmpeg(subsCommand).then((session) async {
-            final returnCode = await session.getReturnCode();
-            if (ReturnCode.isSuccess(returnCode)) {
-              Utils.logInfo('${logTag}Video subtitles updated successfully!');
-              StorageUtils.deleteFile(finalPath);
-              StorageUtils.renameFile(tempPath, finalPath);
-            } else {
-              Utils.logError('${logTag}Video subtitles update failed!');
-              final sessionLog = await session.getLogsAsString();
-              final failureStackTrace = await session.getFailStackTrace();
-              Utils.logError('${logTag}Session log: $sessionLog');
-              Utils.logError('${logTag}Failure stacktrace: $failureStackTrace');
-            }
-          });
-
           Utils.logInfo('${logTag}Video edited successfully');
 
           if (widget.determinedDate.difference(DateTime.now()).inDays == 0) {
@@ -318,9 +360,17 @@ class _SaveButtonState extends State<SaveButton> {
               actionText: 'Ok',
               actionColor: AppColors.green,
               action: () {
-                // Deleting video from cache
-                StorageUtils.deleteFile(widget.videoPath);
-                Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {}));
+                final isExperimentalPicker =
+                    SharedPrefsUtil.getBool('useExperimentalPicker') ?? true;
+                // Deleting video from cache for recording page, or if experimental picker is disabled since experimental uses the source video
+                if (widget.isFromRecordingPage || !isExperimentalPicker) {
+                  StorageUtils.deleteFile(widget.videoPath);
+                }
+                Get.offAllNamed(
+                  Routes.HOME,
+                  arguments:
+                      widget.isFromRecordingPage ? null : {'forcedDate': widget.determinedDate},
+                )?.then((_) => setState(() {}));
               },
             ),
           );
@@ -336,7 +386,6 @@ class _SaveButtonState extends State<SaveButton> {
 
           // Make sure no incomplete files were left in the folder
           StorageUtils.deleteFile(finalPath);
-          StorageUtils.deleteFile(tempPath);
 
           await showDialog(
             barrierDismissible: false,
@@ -348,20 +397,17 @@ class _SaveButtonState extends State<SaveButton> {
               actionText: 'Ok',
               actionColor: Colors.red,
               sendLogs: true,
-              action: () =>
-                  Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {})),
+              action: () => Get.offAllNamed(Routes.HOME)?.then((_) => setState(() {})),
             ),
           );
         }
       },
       statisticsCallback: (statistics) async {
         final totalVideoDuration =
-            (widget.videoEndInMilliseconds - widget.videoStartInMilliseconds) ~/
-                1000;
+            (widget.videoEndInMilliseconds - widget.videoStartInMilliseconds) ~/ 1000;
         // Determines the currently processed percentage of the video
         if (statistics.getTime() > 0) {
-          num tempProgressValue =
-              (statistics.getTime() ~/ totalVideoDuration) / 10;
+          num tempProgressValue = (statistics.getTime() ~/ totalVideoDuration) / 10;
           // Ideally the value should not exceed 100%, but the output also considers milliseconds so we estimate to 100.
           if (tempProgressValue >= 100) {
             tempProgressValue = 99.9;

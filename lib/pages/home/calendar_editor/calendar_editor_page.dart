@@ -1,14 +1,16 @@
+// ignore_for_file: avoid_bool_literals_in_conditional_expressions
+
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/classes/event.dart';
-import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart'
-    show CalendarCarousel;
+import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart' show CalendarCarousel;
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:video_player/video_player.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
 import '../../../controllers/daily_entry_controller.dart';
 import '../../../controllers/lang_controller.dart';
@@ -18,6 +20,7 @@ import '../../../utils/constants.dart';
 import '../../../utils/date_format_utils.dart';
 import '../../../utils/ffmpeg_api_wrapper.dart';
 import '../../../utils/shared_preferences_util.dart';
+import '../../../utils/storage_utils.dart';
 import '../../../utils/theme.dart';
 import '../../../utils/utils.dart';
 import 'video_subtitles_editor_page.dart';
@@ -31,15 +34,17 @@ class CalendarEditorPage extends StatefulWidget {
 }
 
 class _CalendarEditorPageState extends State<CalendarEditorPage> {
+  final Map<String, dynamic>? routeArguments = Get.arguments;
   List<String>? allVideos;
   String? subtitles;
   String currentVideo = '';
   bool wasDateRecorded = false;
   DateTime _selectedDate = DateTime.now();
+  late String _currentSelectedDateStr = DateFormatUtils.getToday();
   late Color mainColor;
   late String appDocDir;
   late String srtFilePath;
-  final String _currentDateStr = DateFormatUtils.getToday();
+  late String _currentDateStr = DateFormatUtils.getToday();
   DateTime lastSelectedDate = DateTime.now();
   final LanguageController _languageController = Get.find();
   final VideoCountController _videoCountController = Get.find();
@@ -47,11 +52,18 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
   VideoPlayerController? _controller;
   final UniqueKey _videoPlayerKey = UniqueKey();
   final mediaStore = MediaStore();
+  late final bool useCalendarAlternativeColors =
+      SharedPrefsUtil.getBool('useAlternativeCalendarColors') ?? false;
 
   @override
   void initState() {
     setMediaStorePath();
     mainColor = ThemeService().isDarkTheme() ? Colors.white : Colors.black;
+    // Prevents UI from going back to current date after adding older videos
+    if (routeArguments?['forcedDate'] != null) {
+      _changeSelectedDate(routeArguments?['forcedDate']);
+      _currentDateStr = DateFormatUtils.getDate(routeArguments?['forcedDate']);
+    }
     Future.delayed(const Duration(milliseconds: 500), () {
       allVideos = Utils.getAllVideos(fullPath: true);
       setSubtitlesPath();
@@ -93,11 +105,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
       final srtFileContent = await File(srtFilePath).readAsString();
       subtitles = srtFileContent.isEmpty
           ? ''
-          : srtFileContent
-              .trim()
-              .split('00:00:00,000 --> 00:00:')
-              .last
-              .substring(6);
+          : srtFileContent.trim().split('00:00:00,000 --> 00:00:').last.substring(6);
     } else {
       subtitles = '';
     }
@@ -157,22 +165,92 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
     }
   }
 
+  bool shouldIgnoreExperimentalFilter() {
+    final useFilter = SharedPrefsUtil.getBool('useFilterInExperimentalPicker') ?? true;
+    if (!useFilter) return true;
+    if (_selectedDate.day == DateTime.now().day &&
+        _selectedDate.month == DateTime.now().month &&
+        _selectedDate.year == DateTime.now().year) {
+      return true;
+    }
+    return false;
+  }
+
   /// Picks video from gallery
   Future<void> selectVideoFromGallery() async {
-    final rawFile = await ImagePicker().pickVideo(
-      source: ImageSource.gallery,
-    );
+    final isExperimentalPicker = SharedPrefsUtil.getBool('useExperimentalPicker') ?? true;
 
-    // Go to the save video page
-    if (rawFile != null) {
-      Get.toNamed(
-        Routes.SAVE_VIDEO,
-        arguments: {
-          'videoPath': rawFile.path,
-          'currentDate': _selectedDate,
-          'isFromRecordingPage': false,
-        },
+    if (isExperimentalPicker) {
+      final bool shouldIgnoreFilter = shouldIgnoreExperimentalFilter();
+      final FilterOptionGroup filterOptionGroup = FilterOptionGroup(
+        containsPathModified: true,
+        createTimeCond: DateTimeCond(
+          min: _selectedDate,
+          max: DateTime.now(),
+        ),
+        orders: [
+          const OrderOption(
+            type: OrderOptionType.createDate,
+            asc: true,
+          ),
+        ],
       );
+
+      final List<AssetEntity>? result = await AssetPicker.pickAssets(
+        context,
+        pickerConfig: AssetPickerConfig(
+          maxAssets: 1,
+          requestType: RequestType.video,
+          filterOptions: shouldIgnoreFilter ? null : filterOptionGroup,
+          sortPathsByModifiedDate: true,
+          specialItemPosition: SpecialItemPosition.prepend,
+          specialItemBuilder: (context, path, length) {
+            return Center(
+              child: Text(
+                shouldIgnoreFilter
+                    ? 'Latest\nvideos'
+                    : 'From\n${_selectedDate.toString().substring(0, 10).split('-').reversed.join('-')}\nonwards',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+
+      if (result?.isEmpty == false) {
+        final File? file = await result?.first.loadFile();
+        if (file != null) {
+          Get.toNamed(
+            Routes.SAVE_VIDEO,
+            arguments: {
+              'videoPath': file.path,
+              'currentDate': _selectedDate,
+              'isFromRecordingPage': false,
+            },
+          );
+        }
+      }
+    } else {
+      final rawFile = await ImagePicker().pickVideo(
+        source: ImageSource.gallery,
+      );
+
+      // Go to the save video page
+      if (rawFile != null) {
+        Get.toNamed(
+          Routes.SAVE_VIDEO,
+          arguments: {
+            'videoPath': rawFile.path,
+            'currentDate': _selectedDate,
+            'isFromRecordingPage': false,
+          },
+        );
+      }
     }
   }
 
@@ -195,23 +273,21 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(
-              foregroundColor: ThemeService().isDarkTheme()
-                  ? AppColors.light
-                  : AppColors.dark,
+              foregroundColor: ThemeService().isDarkTheme() ? AppColors.light : AppColors.dark,
             ),
             child: Text('no'.tr),
           ),
           TextButton(
             onPressed: () async {
               // Delete current video from storage
-              await mediaStore.deleteFile(
-                fileName: currentVideo.split('/').last,
-                dirType: DirType.video,
-                dirName: DirName.dcim,
-              );
+              try {
+                StorageUtils.deleteFile(currentVideo);
+              } catch (e) {
+                Utils.logError('[CALENDAR] - Error deleting $currentVideo: $e, trying MediaStore');
+                await StorageUtils.deleteFileWithMediaStore(currentVideo);
+              }
 
-              Utils.logInfo(
-                  '[CALENDAR] - Deleted video from $_currentDateStr: $currentVideo');
+              Utils.logInfo('[CALENDAR] - Deleted video from $_currentDateStr: $currentVideo');
 
               // Reduce the video count recorded by the app
               _videoCountController.reduceVideoCount();
@@ -291,9 +367,10 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                           child: Text(
                             date.day.toString(),
                             style: TextStyle(
-                              color: hasVideo
-                                  ? AppColors.green
-                                  : AppColors.mainColor,
+                              color: getDayColor(hasVideo),
+                              fontWeight: useCalendarAlternativeColors
+                                  ? FontWeight.w900
+                                  : FontWeight.normal,
                               fontFamily: 'Magic',
                             ),
                           ),
@@ -326,9 +403,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                     fontWeight: FontWeight.w900,
                   ),
                   weekFormat: false,
-                  iconColor: ThemeService().isDarkTheme()
-                      ? Colors.white
-                      : Colors.black,
+                  iconColor: ThemeService().isDarkTheme() ? Colors.white : Colors.black,
                   headerTextStyle: TextStyle(
                     fontFamily: 'Magic',
                     fontSize: 20.0,
@@ -352,8 +427,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                     ? Column(
                         children: [
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
                             child: AspectRatio(
                               aspectRatio: 16 / 9,
                               child: Container(
@@ -373,11 +447,9 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                                       ),
                                     ),
                                     FutureBuilder(
-                                      future:
-                                          initializeVideoPlayback(currentVideo),
+                                      future: initializeVideoPlayback(currentVideo),
                                       builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
                                           return const SizedBox.shrink();
                                         }
 
@@ -388,10 +460,8 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                                         }
 
                                         // Not sure if it works but if the videoController fails we try to restart the page
-                                        if (_controller?.value.hasError ==
-                                            true) {
-                                          WidgetsBinding.instance
-                                              .addPostFrameCallback((_) {
+                                        if (_controller?.value.hasError == true) {
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
                                             _controller?.dispose();
                                           });
                                           Get.offAllNamed(Routes.HOME)
@@ -447,7 +517,10 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                                       _controller,
                                       forcePause: true,
                                     );
-                                    await deleteVideoDialog();
+                                    // Avoid '!_debugLocked': is not true.
+                                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                                      await deleteVideoDialog();
+                                    });
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.all(4.0),
@@ -466,22 +539,26 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                                       borderRadius: BorderRadius.circular(30.0),
                                     ),
                                   ),
-                                  onPressed: () {
+                                  onPressed: () async {
                                     try {
-                                      pauseOrResumeVideoPlayback(
+                                      await pauseOrResumeVideoPlayback(
                                         _controller,
                                         forcePause: true,
                                       );
                                     } catch (e) {}
                                     // Avoid route not being pushed: '!_debugLocked': is not true.
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback((_) {
-                                      Get.to(
+                                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                                      final bool edited = await Get.to(
                                         VideoSubtitlesEditorPage(
                                           videoPath: currentVideo,
                                           subtitles: subtitles ?? '',
                                         ),
                                       );
+
+                                      // Update UI
+                                      if (edited) {
+                                        await getSubtitlesForSelectedDate();
+                                      }
                                     });
                                   },
                                   child: Padding(
@@ -518,7 +595,7 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
                                 ),
                                 onPressed: () async {
                                   Utils.logInfo(
-                                      '[CALENDAR] add video button pressed for date $_currentDateStr');
+                                      '[CALENDAR] add video button pressed for date $_currentSelectedDateStr');
                                   await selectVideoFromGallery();
                                 },
                                 child: Padding(
@@ -539,9 +616,12 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
 
   /// Sets the [_selectedDate] to the given [date] and checks if there is a video for that date
   Future<void> _changeSelectedDate(DateTime date) async {
-    setState(
-      () => _selectedDate = date,
-    );
+    setState(() {
+      _selectedDate = date;
+      _currentSelectedDateStr = DateFormatUtils.getDate(
+        date,
+      );
+    });
 
     final currentVideoExists = allVideos!.any(
       (a) => a.contains(
@@ -569,6 +649,13 @@ class _CalendarEditorPageState extends State<CalendarEditorPage> {
         wasDateRecorded = false;
       });
     }
+  }
+
+  Color getDayColor(bool hasVideo) {
+    if (hasVideo) {
+      return useCalendarAlternativeColors ? Colors.blue : AppColors.green;
+    }
+    return useCalendarAlternativeColors ? AppColors.yellow : AppColors.mainColor;
   }
 }
 
