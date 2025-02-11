@@ -200,41 +200,54 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
   }
 
   Future<void> _getAddressFromLatLng(Position position) async {
-    await placemarkFromCoordinates(
-      _currentPosition!.latitude,
-      _currentPosition!.longitude,
-      localeIdentifier: Get.locale!.languageCode,
-    ).then((List<Placemark> placemarks) {
-      final Placemark place = placemarks[0];
-      String city = '';
-      if (place.locality?.isNotEmpty == true) {
-        city = place.locality!;
-      } else if (place.subAdministrativeArea?.isNotEmpty == true) {
-        city = place.subAdministrativeArea!;
-      } else if (place.administrativeArea?.isNotEmpty == true) {
-        city = place.administrativeArea!;
-      }
-      setState(() {
-        _currentAddress = '$city, ${place.country}';
-      });
+    const int maxAttempts = 3;
+    int attempts = 0;
 
-      Utils.logError('[Geolocation] - Location obtained successfully!');
-    }).catchError((e) {
-      Utils.logError('[Geolocation] - Failed to decode location: $e');
-      if (isGeotaggingEnabled) {
-        toggleGeotaggingStatus();
+    while (attempts < maxAttempts) {
+      try {
+        await placemarkFromCoordinates(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          localeIdentifier: Get.locale!.languageCode,
+        ).then((List<Placemark> placemarks) {
+          final Placemark place = placemarks[0];
+          String city = '';
+          if (place.locality?.isNotEmpty == true) {
+            city = place.locality!;
+          } else if (place.subAdministrativeArea?.isNotEmpty == true) {
+            city = place.subAdministrativeArea!;
+          } else if (place.administrativeArea?.isNotEmpty == true) {
+            city = place.administrativeArea!;
+          }
+          setState(() {
+            _currentAddress = '$city, ${place.country}';
+          });
+          Utils.logInfo('[Geolocation] - Location obtained successfully!');
+        });
+        break;
+      } catch (e) {
+        attempts++;
+        if (attempts == maxAttempts) {
+          print('Function failed after $maxAttempts attempts: $e');
+          if (isGeotaggingEnabled) {
+            toggleGeotaggingStatus();
+          }
+          setState(() {
+            _isLocationProcessing = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'locationServiceError'.tr,
+              ),
+            ),
+          );
+        } else {
+          Utils.logError('[Geolocation] - Failed to decode location (attempt $attempts): $e');
+          await Future.delayed(const Duration(seconds: 1));
+        }
       }
-      setState(() {
-        _isLocationProcessing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'locationServiceError'.tr,
-          ),
-        ),
-      );
-    });
+    }
   }
 
   void changeColor(Color color) {
@@ -452,8 +465,9 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (_) async {
         // Prevent showing the option to re-record video if not coming from the recording page
         final isFromRecordingPage = routeArguments['isFromRecordingPage'];
         if (!isFromRecordingPage) {
@@ -464,7 +478,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
           }
           Get.back();
         } else {
-          showDialog(
+          await showDialog(
             barrierDismissible: false,
             context: Get.context!,
             builder: (context) => CustomDialog(
@@ -480,11 +494,16 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
             ),
           );
         }
-        return true;
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('saveVideo'.tr),
+          iconTheme: const IconThemeData(
+            color: Colors.white,
+          ),
+          title: Text(
+            'saveVideo'.tr,
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
         floatingActionButton: Visibility(
           visible: !_isLocationProcessing,
@@ -790,12 +809,17 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
                   controller: subtitlesTextController,
                   style: TextStyle(
                     fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                    color: Colors.white,
                   ),
                   maxLines: 6,
                   readOnly: true,
                   onTap: () async => await showSubtitlesDialog(),
                   decoration: InputDecoration(
+                    fillColor: AppColors.dark,
                     hintText: 'enterSubtitles'.tr,
+                    hintStyle: const TextStyle(
+                      color: Colors.white,
+                    ),
                     filled: true,
                     enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: isDarkTheme ? Colors.white : Colors.black),
@@ -824,8 +848,11 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
             height: 42,
             child: TabBar(
               labelPadding: const EdgeInsets.all(10),
-              indicator: const UnderlineTabIndicator(
-                borderSide: BorderSide(color: AppColors.mainColor, width: 2), // Indicator height
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(
+                  color: ThemeService().isDarkTheme() ? Colors.white : Colors.black,
+                  width: 4,
+                ), // Indicator height
                 // insets: EdgeInsets.only(left: 60, right: 40), // Indicator width
               ),
               isScrollable: true,
@@ -870,6 +897,7 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
   Future<void> showSubtitlesDialog() async {
     await showDialog(
       context: context,
+      useSafeArea: false,
       builder: (context) => AlertDialog(
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -910,12 +938,14 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
               autofocus: true,
               controller: subtitlesTextController,
               textCapitalization: TextCapitalization.sentences,
-              maxLines: 12,
+              maxLines: 10,
               style: TextStyle(
                 fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                color: Colors.white,
               ),
               decoration: InputDecoration(
                 filled: true,
+                fillColor: AppColors.dark,
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: isDarkTheme ? Colors.white : Colors.black),
                 ),
@@ -952,9 +982,16 @@ class _SaveVideoPageState extends State<SaveVideoPage> {
               autofocus: true,
               controller: customLocationTextController,
               textCapitalization: TextCapitalization.sentences,
+              style: TextStyle(
+                color: ThemeService().isDarkTheme() ? Colors.black : Colors.white,
+              ),
               decoration: InputDecoration(
                 hintText: 'enterLocation'.tr,
+                hintStyle: const TextStyle(
+                  color: Colors.white,
+                ),
                 filled: true,
+                fillColor: AppColors.dark,
                 border: const OutlineInputBorder(
                   borderSide: BorderSide(color: AppColors.green),
                 ),
